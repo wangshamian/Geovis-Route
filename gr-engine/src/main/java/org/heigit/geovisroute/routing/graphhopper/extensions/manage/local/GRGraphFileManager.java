@@ -49,9 +49,9 @@ public class GRGraphFileManager implements GRGraphFolderStrategy {
     public void initialize() {
         File activeGraphDirectory = getActiveGraphDirectory();
         if (!activeGraphDirectory.exists()) {
-            LOGGER.debug("[%s] Creating graph directory %s".formatted(getProfileDescriptiveName(), activeGraphDirectory.getAbsolutePath()));
+            LOGGER.debug("[%s] 正在创建图数据目录 %s".formatted(getProfileDescriptiveName(), activeGraphDirectory.getAbsolutePath()));
             if (!activeGraphDirectory.mkdirs()) {
-                LOGGER.error("[%s] Could not create graph directory %s".formatted(getProfileDescriptiveName(), activeGraphDirectory.getAbsolutePath()));
+                LOGGER.error("[%s] 无法创建图数据目录 %s".formatted(getProfileDescriptiveName(), activeGraphDirectory.getAbsolutePath()));
             }
         }
     }
@@ -106,26 +106,26 @@ public class GRGraphFileManager implements GRGraphFolderStrategy {
     public void cleanupIncompleteFiles() {
         File incompleteDownloadFile = asIncompleteFile(getDownloadedCompressedGraphFile());
         deleteFileWithLogging(incompleteDownloadFile,
-                "[%s] Deleted incomplete graph download file from previous application run: %s",
-                "Error deleting incomplete download file: %s");
+                "[%s] 已删除上次应用运行遗留的未完成图下载文件: %s",
+                "删除未完成下载文件时出错: %s");
 
         File graphBuildInfoDownloadFile = getDownloadedGraphBuildInfoFile();
         deleteFileWithLogging(graphBuildInfoDownloadFile,
-                "[%s] Deleted graph-info download file from previous application run: %s",
-                "Error deleting graph-info download file: %s");
+                "[%s] 已删除上次应用运行遗留的 graph-info 下载文件: %s",
+                "删除 graph-info 下载文件时出错: %s");
 
         File incompleteGraphBuildInfoDownloadFile = asIncompleteFile(getDownloadedGraphBuildInfoFile());
         deleteFileWithLogging(incompleteGraphBuildInfoDownloadFile,
-                "[%s] Deleted incomplete graph download file from previous application run: %s",
-                "Error deleting incomplete graph download file: %s");
+                "[%s] 已删除上次应用运行遗留的未完成图下载文件: %s",
+                "删除未完成图下载文件时出错: %s");
 
         File incompleteExtractionFolder = asIncompleteDirectory(getDownloadedExtractedGraphDirectory());
         if (incompleteExtractionFolder.exists() && incompleteExtractionFolder.isDirectory()) {
             try {
                 FileUtils.deleteDirectory(incompleteExtractionFolder);
-                LOGGER.debug("[%s] Deleted incomplete graph graph extraction folder from previous application run: %s".formatted(getProfileDescriptiveName(), incompleteExtractionFolder.getAbsolutePath()));
+                LOGGER.debug("[%s] 已删除上次应用运行遗留的未完成图解压目录: %s".formatted(getProfileDescriptiveName(), incompleteExtractionFolder.getAbsolutePath()));
             } catch (IOException e) {
-                LOGGER.error("[%s] Could not delete incomplete graph extraction folder from previous application run: %s".formatted(getProfileDescriptiveName(), incompleteExtractionFolder.getAbsolutePath()));
+                LOGGER.error("[%s] 无法删除上次应用运行遗留的未完成图解压目录: %s".formatted(getProfileDescriptiveName(), incompleteExtractionFolder.getAbsolutePath()));
             }
         }
     }
@@ -142,19 +142,19 @@ public class GRGraphFileManager implements GRGraphFolderStrategy {
         File backupFile = new File(newAbsPath);
 
         if (backupFile.exists()) {
-            LOGGER.debug("[%s] Deleting old backup directory %s".formatted(getProfileDescriptiveName(), newAbsPath));
+            LOGGER.debug("[%s] 正在删除旧备份目录 %s".formatted(getProfileDescriptiveName(), newAbsPath));
             try {
                 FileUtils.deleteDirectory(backupFile);
                 backupFile = new File(newAbsPath);
             } catch (IOException e) {
-                LOGGER.warn("[%s] Old backup directory %s could not be deleted, caught %s".formatted(getProfileDescriptiveName(), newAbsPath, e.getMessage()));
+                LOGGER.warn("[%s] 无法删除旧备份目录 %s，捕获异常 %s".formatted(getProfileDescriptiveName(), newAbsPath, e.getMessage()));
             }
         }
 
         if (activeGraphDirectory.renameTo(backupFile)) {
-            LOGGER.debug("[%s] Renamed old local graph directory %s to %s".formatted(getProfileDescriptiveName(), origAbsPath, newAbsPath));
+            LOGGER.debug("[%s] 已将旧本地图数据目录 %s 重命名为 %s".formatted(getProfileDescriptiveName(), origAbsPath, newAbsPath));
         } else {
-            LOGGER.error("[%s] Could not backup local graph directory %s to %s".formatted(getProfileDescriptiveName(), origAbsPath, newAbsPath));
+            LOGGER.error("[%s] 无法将本地图数据目录 %s 备份为 %s".formatted(getProfileDescriptiveName(), origAbsPath, newAbsPath));
         }
         deleteOldestBackups();
     }
@@ -168,10 +168,10 @@ public class GRGraphFileManager implements GRGraphFolderStrategy {
         List<File> backupsToDelete = existingBackups.subList(0, numBackupsToDelete);
         for (File backupFile : backupsToDelete) {
             try {
-                LOGGER.debug("[%s] Deleting old backup directory %s".formatted(getProfileDescriptiveName(), backupFile.getAbsolutePath()));
+                LOGGER.debug("[%s] 正在删除旧备份目录 %s".formatted(getProfileDescriptiveName(), backupFile.getAbsolutePath()));
                 FileUtils.deleteDirectory(backupFile);
             } catch (IOException e) {
-                LOGGER.warn("[%s] Old backup directory %s could not be deleted, caught %s".formatted(getProfileDescriptiveName(), backupFile.getAbsolutePath(), e.getMessage()));
+                LOGGER.warn("[%s] 无法删除旧备份目录 %s，捕获异常 %s".formatted(getProfileDescriptiveName(), backupFile.getAbsolutePath(), e.getMessage()));
             }
         }
     }
@@ -187,11 +187,11 @@ public class GRGraphFileManager implements GRGraphFolderStrategy {
     }
 
     public GraphBuildInfo getActiveGraphBuildInfo() throws GRGraphFileManagerException {
-        LOGGER.trace("[%s] Checking active graph info...".formatted(getProfileDescriptiveName()));
+        LOGGER.trace("[%s] 正在检查活动图信息...".formatted(getProfileDescriptiveName()));
         File activeGraphDirectory = getActiveGraphDirectory();
 
         if (!hasActiveGraph()) {
-            LOGGER.trace("[%s] No active graph directory found.".formatted(getProfileDescriptiveName()));
+            LOGGER.trace("[%s] 未找到活动图数据目录。".formatted(getProfileDescriptiveName()));
             return new GraphBuildInfo().setLocalDirectory(activeGraphDirectory);
         }
 
@@ -199,11 +199,11 @@ public class GRGraphFileManager implements GRGraphFolderStrategy {
     }
 
     public GraphBuildInfo getDownloadedExtractedGraphBuildInfo() throws GRGraphFileManagerException {
-        LOGGER.trace("[%s] Checking downloaded graph info...".formatted(getProfileDescriptiveName()));
+        LOGGER.trace("[%s] 正在检查已下载图信息...".formatted(getProfileDescriptiveName()));
         File downloadedExtractedGraphDirectory = getDownloadedExtractedGraphDirectory();
 
         if (!hasDownloadedExtractedGraph()) {
-            LOGGER.trace("[%s] No downloaded graph directory found.".formatted(getProfileDescriptiveName()));
+            LOGGER.trace("[%s] 未找到已下载图数据目录。".formatted(getProfileDescriptiveName()));
             return new GraphBuildInfo().setLocalDirectory(downloadedExtractedGraphDirectory);
         }
 
@@ -213,12 +213,12 @@ public class GRGraphFileManager implements GRGraphFolderStrategy {
     private GraphBuildInfo getGraphBuildInfo(File graphBuildInfoFile) throws GRGraphFileManagerException {
         File graphDirectory = graphBuildInfoFile.getParentFile();
         if (!graphBuildInfoFile.exists() || !graphBuildInfoFile.isFile()) {
-            LOGGER.trace("[%s] No graph info file %s found in %s".formatted(getProfileDescriptiveName(), graphBuildInfoFile.getName(), graphBuildInfoFile.getParentFile().getName()));
+            LOGGER.trace("[%s] 未找到图信息文件 %s（位于 %s）".formatted(getProfileDescriptiveName(), graphBuildInfoFile.getName(), graphBuildInfoFile.getParentFile().getName()));
             return new GraphBuildInfo().setLocalDirectory(graphDirectory);
         }
 
         PersistedGraphBuildInfo graphBuildInfo = readOrsGraphBuildInfo(graphBuildInfoFile);
-        LOGGER.trace("[%s] Found local graph info with importDate=%s".formatted(getProfileDescriptiveName(), graphBuildInfo.getGraphBuildDate()));
+        LOGGER.trace("[%s] 找到本地图信息，importDate=%s".formatted(getProfileDescriptiveName(), graphBuildInfo.getGraphBuildDate()));
         return new GraphBuildInfo().setLocalDirectory(graphDirectory).setPersistedGraphBuildInfo(graphBuildInfo);
     }
 
@@ -242,7 +242,7 @@ public class GRGraphFileManager implements GRGraphFolderStrategy {
             return getYamlMapper()
                     .readValue(graphBuildInfoFile, PersistedGraphBuildInfo.class);
         } catch (IOException e) {
-            LOGGER.error("Error reading ORS graph info: %s".formatted(e.getMessage()));
+            LOGGER.error("读取 ORS 图信息时出错: %s".formatted(e.getMessage()));
             throw new GRGraphFileManagerException("Error reading ORS graph info: ", e);
         }
     }
@@ -252,13 +252,13 @@ public class GRGraphFileManager implements GRGraphFolderStrategy {
             getYamlMapper()
                     .writeValue(outputFile, persistedGraphBuildInfo);
         } catch (IOException e) {
-            LOGGER.error("Could not write file %s".formatted(outputFile.getAbsolutePath()));
+            LOGGER.error("无法写入文件 %s".formatted(outputFile.getAbsolutePath()));
             throw new GRGraphFileManagerException("Could not write file: ", e);
         }
     }
 
     public PersistedGraphBuildInfo getDownloadedGraphBuildInfo() throws GRGraphFileManagerException {
-        LOGGER.trace("[%s] Checking graph info of previous check...".formatted(getProfileDescriptiveName()));
+        LOGGER.trace("[%s] 正在检查上次检查的图信息...".formatted(getProfileDescriptiveName()));
         File downloadedGraphBuildInfoFile = getDownloadedGraphBuildInfoFile();
         if (downloadedGraphBuildInfoFile.exists()) {
             return readOrsGraphBuildInfo(downloadedGraphBuildInfoFile);
@@ -268,12 +268,12 @@ public class GRGraphFileManager implements GRGraphFolderStrategy {
 
     public void activateExtractedDownloadedGraph() {
         if (hasDownloadedExtractedGraph()) {
-            LOGGER.info("[%s] Activating extracted downloaded graph.".formatted(getProfileDescriptiveName()));
+            LOGGER.info("[%s] 正在激活已解压的下载图数据。".formatted(getProfileDescriptiveName()));
             File downloadedExtractedGraphDirectory = getDownloadedExtractedGraphDirectory();
             if (downloadedExtractedGraphDirectory.renameTo(getActiveGraphDirectory())) {
-                LOGGER.debug("[%s] Successfully activated extracted downloaded graph.".formatted(getProfileDescriptiveName()));
+                LOGGER.debug("[%s] 已成功激活解压后的下载图数据。".formatted(getProfileDescriptiveName()));
             } else {
-                LOGGER.error("[%s] Failed to activate extracted downloaded graph.".formatted(getProfileDescriptiveName()));
+                LOGGER.error("[%s] 激活解压后的下载图数据失败。".formatted(getProfileDescriptiveName()));
             }
         }
     }
@@ -281,7 +281,7 @@ public class GRGraphFileManager implements GRGraphFolderStrategy {
     public void extractDownloadedGraph() {
         File graphDownloadFile = getDownloadedCompressedGraphFile();
         if (!graphDownloadFile.exists()) {
-            LOGGER.debug("[%s] No downloaded graph to extract.".formatted(getProfileDescriptiveName()));
+            LOGGER.debug("[%s] 没有可解压的已下载图数据。".formatted(getProfileDescriptiveName()));
             return;
         }
 
@@ -292,43 +292,43 @@ public class GRGraphFileManager implements GRGraphFolderStrategy {
         String extractionDirectoryAbsPath = extractionDirectory.getAbsolutePath();
 
         if (isExistingDirectory(extractionDirectory)) {
-            LOGGER.debug("[%s] Extraction already started.".formatted(getProfileDescriptiveName()));
+            LOGGER.debug("[%s] 解压已开始。".formatted(getProfileDescriptiveName()));
             return;
         }
 
         try {
-            LOGGER.info("[%s] Extracting downloaded graph file to %s".formatted(getProfileDescriptiveName(), extractionDirectoryAbsPath));
+            LOGGER.info("[%s] 正在将下载的图文件解压到 %s".formatted(getProfileDescriptiveName(), extractionDirectoryAbsPath));
             long start = System.currentTimeMillis();
             (new Unzipper()).unzip(graphDownloadFileAbsPath, extractionDirectoryAbsPath, true);
             long end = System.currentTimeMillis();
 
-            LOGGER.debug("[%s] Extraction of downloaded graph file finished after %d ms, deleting downloaded graph file %s".formatted(
+            LOGGER.debug("[%s] 下载的图文件解压完成，耗时 %d ms，正在删除下载的图文件 %s".formatted(
                     getProfileDescriptiveName(),
                     end - start,
                     graphDownloadFileAbsPath));
             deleteFileWithLogging(graphDownloadFile,
-                    "[%s] Deleted downloaded graph file %s".formatted(getProfileDescriptiveName(), graphDownloadFileAbsPath),
-                    "Error deleting downloaded graph file: %s");
+                    "[%s] 已删除下载的图文件 %s".formatted(getProfileDescriptiveName(), graphDownloadFileAbsPath),
+                    "删除下载的图文件时出错: %s");
 
-            LOGGER.debug("[%s] Renaming extraction directory to %s".formatted(
+            LOGGER.debug("[%s] 正在将解压目录重命名为 %s".formatted(
                     getProfileDescriptiveName(),
                     targetDirectoryAbsPath));
             if (targetDirectory.exists()) {
                 FileUtils.deleteDirectory(targetDirectory);
             }
             if (!extractionDirectory.renameTo(targetDirectory)) {
-                LOGGER.error("[%s] Could not rename extraction directory to %s".formatted(getProfileDescriptiveName(), targetDirectoryAbsPath));
+                LOGGER.error("[%s] 无法将解压目录重命名为 %s".formatted(getProfileDescriptiveName(), targetDirectoryAbsPath));
             }
 
         } catch (IOException ioException) {
-            LOGGER.error("[%s] Error during extraction of %s to %s -> %s".formatted(
+            LOGGER.error("[%s] 将 %s 解压到 %s 时出错 -> %s".formatted(
                     getProfileDescriptiveName(),
                     graphDownloadFileAbsPath,
                     extractionDirectoryAbsPath,
                     targetDirectoryAbsPath));
             throw new GRGraphFileManagerException("Error during extraction of downloaded graph file: ", ioException);
         }
-        LOGGER.info("[%s] Downloaded graph was extracted and will be activated at next graph activation check or application start.".formatted(getProfileDescriptiveName()));
+        LOGGER.info("[%s] 下载的图数据已解压，将在下次图激活检查或应用启动时激活。".formatted(getProfileDescriptiveName()));
     }
 
     public void writeOrsGraphBuildInfoFileIfNotExists(GRGraphHopper gh) {
@@ -340,16 +340,16 @@ public class GRGraphFileManager implements GRGraphFolderStrategy {
         File activeGraphDirectory = getActiveGraphDirectory();
         File activeGraphBuildInfoFile = getActiveGraphBuildInfoFile();
         if (!activeGraphDirectory.exists() || !activeGraphDirectory.isDirectory() || !activeGraphDirectory.canWrite()) {
-            LOGGER.debug("Graph directory %s not existing or not writeable.".formatted(activeGraphBuildInfoFile.getName()));
+            LOGGER.debug("图数据目录 %s 不存在或不可写。".formatted(activeGraphBuildInfoFile.getName()));
             return;
         }
         if (activeGraphBuildInfoFile.exists()) {
-            LOGGER.debug("GraphBuildInfo-File %s already existing.".formatted(activeGraphBuildInfoFile.getName()));
+            LOGGER.debug("GraphBuildInfo 文件 %s 已存在。".formatted(activeGraphBuildInfoFile.getName()));
             return;
         }
         ProfileProperties profileProperties = gh.getProfileProperties();
         if (profileProperties == null) {
-            LOGGER.debug("Configuration for profile %s does not exist, could not write GraphBuildInfo-File.".formatted(this.graphManagementRuntimeProperties.getLocalProfileName()));
+            LOGGER.debug("profile %s 的配置不存在，无法写入 GraphBuildInfo 文件。".formatted(this.graphManagementRuntimeProperties.getLocalProfileName()));
             return;
         }
         PersistedGraphBuildInfo persistedGraphBuildInfo = PersistedGraphBuildInfo.withOsmDate(getDateFromGhProperty(gh, "datareader.data.date"));
@@ -369,7 +369,7 @@ public class GRGraphFileManager implements GRGraphFolderStrategy {
             DateFormat f = Helper.createFormatter();
             return f.parse(importDateString);
         } catch (ParseException e) {
-            LOGGER.error("Could not parse date from GraphHopper property %s".formatted(ghProperty));
+            LOGGER.error("无法从 GraphHopper 属性 %s 解析日期".formatted(ghProperty));
             return null;
         }
     }

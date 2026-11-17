@@ -92,7 +92,7 @@ public class SubGraph {
             }
         }
 
-        logger.info("SubGraph: nodes - " + node2EdgesMap.size() + "; edges - " + edgesCount);
+        logger.info("SubGraph: 节点 - " + node2EdgesMap.size() + "；边 - " + edgesCount);
     }
 
     static class EdgeIteratorLink {

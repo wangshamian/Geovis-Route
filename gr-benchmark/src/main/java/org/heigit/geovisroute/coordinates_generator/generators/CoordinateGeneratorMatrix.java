@@ -71,7 +71,7 @@ public class CoordinateGeneratorMatrix extends AbstractCoordinateGenerator {
             try {
                 return httpClient.execute(request, this::processResponse);
             } catch (IOException e) {
-                LOGGER.error("Error executing request: {}", e.getMessage());
+                LOGGER.error("执行请求时出错：{}", e.getMessage());
                 return null;
             }
         };
@@ -123,7 +123,7 @@ public class CoordinateGeneratorMatrix extends AbstractCoordinateGenerator {
 
     @Override
     public void generate(int maxAttempts) {
-        LOGGER.info("Starting route generation with {} threads and max attempts: {}", numThreads, maxAttempts);
+        LOGGER.info("开始生成路线，线程数为 {}，最大尝试次数为 {}", numThreads, maxAttempts);
         initializeCollections();
 
         ExecutorService executor = null;
@@ -134,7 +134,7 @@ public class CoordinateGeneratorMatrix extends AbstractCoordinateGenerator {
             executor = Executors.newFixedThreadPool(numThreads);
             executeMatrixGeneration(executor, maxAttempts, shouldContinue, consecutiveFailedAttempts);
         } catch (Exception e) {
-            LOGGER.error("Error generating routes: ", e);
+            LOGGER.error("生成路线时出错：", e);
         } finally {
             shutdownExecutor(executor);
         }
@@ -157,9 +157,9 @@ public class CoordinateGeneratorMatrix extends AbstractCoordinateGenerator {
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                         shouldContinue.set(false);
-                        LOGGER.warn("Route generation interrupted");
+                        LOGGER.warn("路线生成已中断");
                     } catch (ExecutionException e) {
-                        LOGGER.error("Error in worker task: {}", e.getCause().getMessage());
+                        LOGGER.error("工作线程任务出错：{}", e.getCause().getMessage());
                     }
                 }
 
@@ -212,7 +212,7 @@ public class CoordinateGeneratorMatrix extends AbstractCoordinateGenerator {
     private void finalizeProgress(ProgressBar pb, int maxAttempts, int attempts) {
         pb.stepTo(matrixRepository.getTotalMatrixCount());
         if (attempts >= maxAttempts) {
-            LOGGER.warn("Stopped route generation after {} attempts. Routes per profile: {}",
+            LOGGER.warn("尝试 {} 次后停止生成路线。各 profile 的进度：{}",
                     maxAttempts, matrixRepository.getProgressMessage());
         }
     }
@@ -234,7 +234,7 @@ public class CoordinateGeneratorMatrix extends AbstractCoordinateGenerator {
         try {
             httpClient.close();
         } catch (IOException e) {
-            LOGGER.error("Error closing HTTP client", e);
+            LOGGER.error("关闭 HTTP 客户端时出错", e);
         }
     }
 
@@ -303,7 +303,7 @@ public class CoordinateGeneratorMatrix extends AbstractCoordinateGenerator {
             try {
                 return generateMatricesForProfile();
             } catch (Exception e) {
-                LOGGER.error("Error generating routes for profile {}: {}", profile, e.getMessage());
+                LOGGER.error("为 profile {} 生成路线时出错：{}", profile, e.getMessage());
                 return false;
             }
         }
@@ -352,7 +352,7 @@ public class CoordinateGeneratorMatrix extends AbstractCoordinateGenerator {
             try {
                 addedNewMatrix = processCoordinatePairs(snappedCoordinates, maxDistance);
             } catch (Exception e) {
-                LOGGER.error("Error processing snapped coordinates: {}", e.getMessage());
+                LOGGER.error("处理吸附后的坐标时出错：{}", e.getMessage());
             }
             return addedNewMatrix;
         }
@@ -526,15 +526,15 @@ public class CoordinateGeneratorMatrix extends AbstractCoordinateGenerator {
                 boolean added = matrixRepository.addMatrixIfUnique(matrix);
 
                 if (added) {
-                    LOGGER.debug("Added new unique route for profile: {}", profile);
+                    LOGGER.debug("已为 profile {} 添加新的唯一路线", profile);
                 } else {
-                    LOGGER.debug("Skipped duplicate route for profile: {}", profile);
+                    LOGGER.debug("已跳过 profile {} 的重复路线", profile);
                 }
 
                 return added;
 
             } catch (Exception e) {
-                LOGGER.error("Error adding route: {}", e.getMessage(), e);
+                LOGGER.error("添加路线时出错：{}", e.getMessage(), e);
                 return false;
             }
         }

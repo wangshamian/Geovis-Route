@@ -19,26 +19,24 @@ public class SnappingGeneratorApp {
                 return;
             }
 
-            LOGGER.info("Creating coordinate generator for snapping...");
+            LOGGER.info("正在创建用于 snapping 的坐标生成器...");
             CoordinateGeneratorSnapping generator = cli.createGenerator();
 
-            LOGGER.info("Generating and snapping {} points...", generator.getNumPoints());
+            LOGGER.info("正在生成并吸附 {} 个点...", generator.getNumPoints());
             generator.generate();
 
             LOGGER.info("\n");
-            LOGGER.info("Writing {} snapped points to {}", generator.getResult().size(), cli.getOutputFile());
+            LOGGER.info("正在将 {} 个已吸附的点写入 {}", generator.getResult().size(), cli.getOutputFile());
             generator.writeToCSV(cli.getOutputFile());
 
-            LOGGER.info("Successfully snapped {} coordinate{}",
-                    generator.getResult().size(),
-                    generator.getResult().size() != 1 ? "s" : "");
-            LOGGER.info("Results written to: {}", cli.getOutputFile());
+            LOGGER.info("已成功吸附 {} 个坐标", generator.getResult().size());
+            LOGGER.info("结果已写入：{}", cli.getOutputFile());
 
         } catch (NumberFormatException e) {
-            LOGGER.error("Error parsing numeric arguments: {}", e.getMessage());
+            LOGGER.error("解析数值参数时出错：{}", e.getMessage());
             System.exit(1);
         } catch (IOException e) {
-            LOGGER.error("Error writing to output file: {}", e.getMessage());
+            LOGGER.error("写入输出文件时出错：{}", e.getMessage());
             System.exit(1);
         }
         System.exit(0);

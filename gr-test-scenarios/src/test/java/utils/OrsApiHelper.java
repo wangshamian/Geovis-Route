@@ -34,7 +34,7 @@ public class OrsApiHelper {
 
     private static JsonNode getProfiles(String address, int port) throws IOException {
         // 使用地址和端口创建一个新的 URL 对象
-        URL url = new URL("http://" + address + ":" + port + "/ors/v2/status");
+        URL url = new URL("http://" + address + ":" + port + "/gr/status");
         // 使用该 URL 创建一个新的 HTTP 连接对象
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         // 连接到该 URL

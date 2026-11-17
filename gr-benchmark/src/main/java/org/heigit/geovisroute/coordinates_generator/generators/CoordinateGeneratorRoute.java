@@ -58,7 +58,7 @@ public class CoordinateGeneratorRoute extends AbstractCoordinateGenerator {
             try (CloseableHttpClient client = createHttpClient()) {
                 return client.execute(request, this::processResponse);
             } catch (IOException e) {
-                LOGGER.error("Error executing request: {}", e.getMessage());
+                LOGGER.error("执行请求时出错：{}", e.getMessage());
                 return null;
             }
         };
@@ -91,7 +91,7 @@ public class CoordinateGeneratorRoute extends AbstractCoordinateGenerator {
 
     @Override
     public void generate(int maxAttempts) {
-        LOGGER.info("Starting route generation with {} threads and max attempts: {}", numThreads, maxAttempts);
+        LOGGER.info("开始生成路线，线程数为 {}，最大尝试次数为 {}", numThreads, maxAttempts);
         initializeCollections();
 
         ExecutorService executor = null;
@@ -102,7 +102,7 @@ public class CoordinateGeneratorRoute extends AbstractCoordinateGenerator {
             executor = Executors.newFixedThreadPool(numThreads);
             executeRouteGeneration(executor, maxAttempts, shouldContinue, consecutiveFailedAttempts);
         } catch (Exception e) {
-            LOGGER.error("Error generating routes: ", e);
+            LOGGER.error("生成路线时出错：", e);
         } finally {
             shutdownExecutor(executor);
         }
@@ -125,9 +125,9 @@ public class CoordinateGeneratorRoute extends AbstractCoordinateGenerator {
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                         shouldContinue.set(false);
-                        LOGGER.warn("Route generation interrupted");
+                        LOGGER.warn("路线生成已中断");
                     } catch (ExecutionException e) {
-                        LOGGER.error("Error in worker task: {}", e.getCause().getMessage());
+                        LOGGER.error("工作线程任务出错：{}", e.getCause().getMessage());
                     }
                 }
 
@@ -180,7 +180,7 @@ public class CoordinateGeneratorRoute extends AbstractCoordinateGenerator {
     private void finalizeProgress(ProgressBar pb, int maxAttempts, int attempts) {
         pb.stepTo(routeRepository.getTotalRouteCount());
         if (attempts >= maxAttempts) {
-            LOGGER.warn("Stopped route generation after {} attempts. Routes per profile: {}",
+            LOGGER.warn("尝试 {} 次后停止生成路线。各 profile 的进度：{}",
                     maxAttempts, routeRepository.getProgressMessage());
         }
     }
@@ -217,7 +217,7 @@ public class CoordinateGeneratorRoute extends AbstractCoordinateGenerator {
             try {
                 return generateRoutesForProfile();
             } catch (Exception e) {
-                LOGGER.error("Error generating routes for profile {}: {}", profile, e.getMessage());
+                LOGGER.error("为 profile {} 生成路线时出错：{}", profile, e.getMessage());
                 return false;
             }
         }
@@ -245,7 +245,7 @@ public class CoordinateGeneratorRoute extends AbstractCoordinateGenerator {
             try {
                 addedNewRoute = processCoordinatePairs(snappedCoordinates, maxDistance);
             } catch (Exception e) {
-                LOGGER.error("Error processing snapped coordinates: {}", e.getMessage());
+                LOGGER.error("处理吸附后的坐标时出错：{}", e.getMessage());
             }
             return addedNewRoute;
         }
@@ -275,7 +275,7 @@ public class CoordinateGeneratorRoute extends AbstractCoordinateGenerator {
         private boolean processMatrixResult(MatrixCalculator.MatrixResult result) {
 
             if (!result.isValid()) {
-                LOGGER.info("Matrix result is invalid, skipping processing");
+                LOGGER.info("矩阵结果无效，跳过处理");
                 return false;
             }
 
@@ -317,7 +317,7 @@ public class CoordinateGeneratorRoute extends AbstractCoordinateGenerator {
                     double[] endPoint = new double[] { endCoord.get(0).doubleValue(), endCoord.get(1).doubleValue() };
 
                     if (distance < minDistance) {
-                        LOGGER.debug("Skipping route with distance {} < minimum {} meters", distance, minDistance);
+                        LOGGER.debug("跳过距离 {} 小于最小距离 {} 米的路线", distance, minDistance);
                         return false;
                     }
 
@@ -325,15 +325,15 @@ public class CoordinateGeneratorRoute extends AbstractCoordinateGenerator {
                     boolean added = routeRepository.addRouteIfUnique(route);
 
                     if (added) {
-                        LOGGER.debug("Added new unique route for profile: {}", profile);
+                        LOGGER.debug("已为 profile {} 添加新的唯一路线", profile);
                     } else {
-                        LOGGER.debug("Skipped duplicate route for profile: {}", profile);
+                        LOGGER.debug("已跳过 profile {} 的重复路线", profile);
                     }
 
                     return added;
                 }
             } catch (Exception e) {
-                LOGGER.error("Error adding route: {}", e.getMessage());
+                LOGGER.error("添加路线时出错：{}", e.getMessage());
             }
             return false;
         }

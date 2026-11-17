@@ -275,7 +275,7 @@ public abstract class AbstractIsochroneMapBuilder implements IsochroneMapBuilder
 
         if (getLogger().isDebugEnabled()) {
             sw.stop();
-            getLogger().debug("Build shell concave hull " + sw.getSeconds());
+            getLogger().debug("构建外壳凹包: " + sw.getSeconds());
         }
 
         isochroneMap.addIsochrone(new Isochrone(poly, isoValue, meanRadius));

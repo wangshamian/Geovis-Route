@@ -47,15 +47,15 @@ public class UrbanDensityCalculator {
                                         double residentialAreaRadius, double residentialAreaSensitivity,
                                         double cityAreaRadius, double cityAreaSensitivity,
                                         int threads) {
-        logger.info("Calculating residential areas ..., radius={}, sensitivity={}, threads={}", residentialAreaRadius, residentialAreaSensitivity, threads);
+        logger.info("正在计算住宅区 ..., 半径={}, 敏感度={}, 线程数={}", residentialAreaRadius, residentialAreaSensitivity, threads);
         StopWatch sw = StopWatch.started();
         calcResidential(graph, urbanDensityEnc, roadClassEnc, roadClassLinkEnc, residentialAreaRadius, residentialAreaSensitivity, threads);
-        logger.info("Finished calculating residential areas, took: " + sw.stop().getSeconds() + "s");
+        logger.info("住宅区计算完成，耗时: " + sw.stop().getSeconds() + " 秒");
         if (cityAreaRadius > 1) {
-            logger.info("Calculating city areas ..., radius={}, sensitivity={}, threads={}", cityAreaRadius, cityAreaSensitivity, threads);
+            logger.info("正在计算城区 ..., 半径={}, 敏感度={}, 线程数={}", cityAreaRadius, cityAreaSensitivity, threads);
             sw = StopWatch.started();
             calcCity(graph, urbanDensityEnc, cityAreaRadius, cityAreaSensitivity, threads);
-            logger.info("Finished calculating city areas, took: " + sw.stop().getSeconds() + "s");
+            logger.info("城区计算完成，耗时: " + sw.stop().getSeconds() + " 秒");
         }
     }
 

@@ -104,7 +104,7 @@ public abstract class AbstractSRTMElevationProvider extends TileBasedElevationPr
             try {
                 loadExisting = heights.loadExisting();
             } catch (Exception ex) {
-                logger.warn("cannot load dem" + intKey + ", error:" + ex.getMessage());
+                logger.warn("无法加载 DEM " + intKey + ", 错误:" + ex.getMessage());
             }
 
             if (!loadExisting) {
@@ -156,7 +156,7 @@ public abstract class AbstractSRTMElevationProvider extends TileBasedElevationPr
             heights.flush();
 
         } catch (FileNotFoundException ex) {
-            logger.warn("File not found " + heights + " for the coordinates " + lat + "," + lon);
+            logger.warn("文件未找到 " + heights + "，坐标为 " + lat + "," + lon);
             throw ex;
         } catch (Exception ex) {
             throw new RuntimeException("There was an issue with " + heights + " looking up the coordinates " + lat + "," + lon, ex);

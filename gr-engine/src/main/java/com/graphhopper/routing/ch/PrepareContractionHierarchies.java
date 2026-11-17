@@ -165,8 +165,8 @@ public class PrepareContractionHierarchies {
     }
 
     private void logFinalGraphStats() {
-        logger.info("shortcuts that exceed maximum weight: {}", chStore.getNumShortcutsExceedingWeight());
-        logger.info("took: {}s, graph now - num edges: {}, num nodes: {}, num shortcuts: {}",
+        logger.info("超过最大权重的 shortcut 数量: {}", chStore.getNumShortcutsExceedingWeight());
+        logger.info("耗时: {} 秒，当前图 - 边数: {}, 节点数: {}, shortcut 数: {}",
                 (int) allSW.getSeconds(), nf(graph.getEdges()), nf(nodes), nf(chStore.getShortcuts()));
     }
 
@@ -186,7 +186,7 @@ public class PrepareContractionHierarchies {
     }
 
     private void initFromGraph() {
-        logger.info("Creating CH prepare graph, {}", getMemInfo());
+        logger.info("正在创建 CH 准备图，{}", getMemInfo());
         CHPreparationGraph prepareGraph;
         if (chConfig.getTraversalMode().isEdgeBased()) {
             TurnCostStorage turnCostStorage = graph.getTurnCostStorage();
@@ -204,10 +204,10 @@ public class PrepareContractionHierarchies {
         // TreeMap is not memory-efficient and PriorityQueue does not support an efficient update method
         // (and is not memory efficient either)
         sortedNodes = new MinHeapWithUpdate(prepareGraph.getNodes());
-        logger.info("Building CH prepare graph, {}", getMemInfo());
+        logger.info("正在构建 CH 准备图，{}", getMemInfo());
         StopWatch sw = new StopWatch().start();
         CHPreparationGraph.buildFromGraph(prepareGraph, graph, chConfig.getWeighting());
-        logger.info("Finished building CH prepare graph, took: {}s, {}", sw.stop().getSeconds(), getMemInfo());
+        logger.info("CH 准备图构建完成，耗时: {} 秒，{}", sw.stop().getSeconds(), getMemInfo());
         nodeContractor.initFromGraph();
     }
 
@@ -235,11 +235,11 @@ public class PrepareContractionHierarchies {
 
     private void contractNodesUsingHeuristicNodeOrdering() {
         StopWatch sw = new StopWatch().start();
-        logger.info("Building initial queue of nodes to be contracted: {} nodes, {}", nodes, getMemInfo());
+        logger.info("正在构建待收缩节点的初始队列: {} 个节点，{}", nodes, getMemInfo());
         // note that we update the priorities before preparing the node contractor. this does not make much sense,
         // but has always been like that and changing it would possibly require retuning the contraction parameters
         updatePrioritiesOfRemainingNodes();
-        logger.info("Finished building queue, took: {}s, {}", sw.stop().getSeconds(), getMemInfo());
+        logger.info("队列构建完成，耗时: {} 秒，{}", sw.stop().getSeconds(), getMemInfo());
         final int initSize = sortedNodes.size();
         int level = 0;
         checkCounter = 0;
@@ -324,14 +324,14 @@ public class PrepareContractionHierarchies {
         logHeuristicStats(updateCounter);
 
         logger.info(
-                "new shortcuts: " + nf(nodeContractor.getAddedShortcutsCount())
+                "新增 shortcut: " + nf(nodeContractor.getAddedShortcutsCount())
                         + ", initSize:" + nf(initSize)
                         + ", " + chConfig.getWeighting()
                         + ", periodic:" + params.getPeriodicUpdatesPercentage()
                         + ", lazy:" + params.getLastNodesLazyUpdatePercentage()
                         + ", neighbor:" + params.getNeighborUpdatePercentage()
                         + ", " + getTimesAsString()
-                        + ", lazy-overhead: " + (int) (100 * ((checkCounter / (double) initSize) - 1)) + "%"
+                        + ", lazy 额外开销: " + (int) (100 * ((checkCounter / (double) initSize) - 1)) + "%"
                         + ", " + Helper.getMemInfo());
 
         // Preparation works only once so we can release temporary data.
@@ -381,7 +381,7 @@ public class PrepareContractionHierarchies {
 
     private void logHeuristicStats(int updateCounter) {
         logger.info(String.format(Locale.ROOT,
-                "%s, nodes: %10s, shortcuts: %10s, updates: %2d, checked-nodes: %10s, %s, %s, %s",
+                "%s, 节点: %10s, shortcut: %10s, 更新: %2d, 已检查节点: %10s, %s, %s, %s",
                 (isEdgeBased() ? "edge" : "node"),
                 nf(sortedNodes.size()),
                 nf(nodeContractor.getAddedShortcutsCount()),
@@ -394,7 +394,7 @@ public class PrepareContractionHierarchies {
 
     private void logFixedNodeOrderingStats(int nodesContracted, int logSize, StopWatch stopWatch) {
         logger.info(String.format(Locale.ROOT,
-                "nodes: %10s / %10s (%6.2f%%), shortcuts: %10s, speed = %6.2f nodes/ms, %s, %s",
+                "节点: %10s / %10s (%6.2f%%), shortcut: %10s, 速度 = %6.2f 节点/毫秒, %s, %s",
                 nf(nodesContracted),
                 nf(nodes),
                 (100.0 * nodesContracted / nodes),

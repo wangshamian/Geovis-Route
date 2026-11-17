@@ -44,7 +44,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @Tag(name = "Export Service", description = "导出不同交通方式的基础路网图")
-@RequestMapping("/v2/export")
+@RequestMapping("/export")
 @ApiResponse(responseCode = "400", description = "请求不正确，因此无法处理。")
 @ApiResponse(responseCode = "404", description = "无法找到某个元素。如有可能，会提供更详细的错误码。")
 @ApiResponse(responseCode = "405", description = "不支持指定的 HTTP 方法。更多细节请参阅端点文档。")

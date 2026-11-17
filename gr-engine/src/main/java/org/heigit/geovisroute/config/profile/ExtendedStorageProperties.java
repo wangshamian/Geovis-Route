@@ -223,7 +223,7 @@ public class ExtendedStorageProperties {
     private void initializeFilepath(ArrayList<String> nonNullableProperties, ExtendedStorageName storageName) {
         final Path emptyPath = Path.of("");
         if (filepath == null || filepath.equals(emptyPath)) {
-            LOGGER.warn("Storage %s is missing filepath. Disabling storage.".formatted(storageName));
+            LOGGER.warn("存储 %s 缺少 filepath，将禁用该存储。".formatted(storageName));
             enabled = false;
             filepath = Path.of("");
         } else {
@@ -239,7 +239,7 @@ public class ExtendedStorageProperties {
         }
         if (boundaries == null || boundaries.equals(emptyPath)) {
             if (!preprocessed) {
-                LOGGER.warn("Storage %s is missing boundaries. Disabling storage.".formatted(storageName));
+                LOGGER.warn("存储 %s 缺少 boundaries，将禁用该存储。".formatted(storageName));
                 enabled = false;
             }
             boundaries = Path.of("");
@@ -247,14 +247,14 @@ public class ExtendedStorageProperties {
             boundaries = boundaries.toAbsolutePath();
         }
         if (ids == null || ids.equals(emptyPath)) {
-            LOGGER.warn("Storage %s is missing ids. Disabling storage.".formatted(storageName));
+            LOGGER.warn("存储 %s 缺少 ids，将禁用该存储。".formatted(storageName));
             enabled = false;
             ids = Path.of("");
         } else {
             ids = ids.toAbsolutePath();
         }
         if (openborders == null || openborders.equals(emptyPath)) {
-            LOGGER.warn("Storage %s is missing openborders. Disabling storage.".formatted(storageName));
+            LOGGER.warn("存储 %s 缺少 openborders，将禁用该存储。".formatted(storageName));
             enabled = false;
             openborders = Path.of("");
         } else {
@@ -278,21 +278,21 @@ public class ExtendedStorageProperties {
             this.logLocation = Path.of("./here_matching.log");
         }
         if (streets == null || streets.equals(emptyPath)) {
-            LOGGER.warn("Storage %s is missing streets. Disabling storage.".formatted(storageName));
+            LOGGER.warn("存储 %s 缺少 streets，将禁用该存储。".formatted(storageName));
             enabled = false;
             streets = Path.of("");
         } else {
             streets = streets.toAbsolutePath();
         }
         if (refPattern == null || refPattern.equals(emptyPath)) {
-            LOGGER.warn("Storage %s is missing ref_pattern. Disabling storage.".formatted(storageName));
+            LOGGER.warn("存储 %s 缺少 ref_pattern，将禁用该存储。".formatted(storageName));
             enabled = false;
             refPattern = Path.of("");
         } else {
             refPattern = refPattern.toAbsolutePath();
         }
         if (pattern15Min == null || pattern15Min.equals(emptyPath)) {
-            LOGGER.warn("Storage %s is missing pattern_15min. Disabling storage.".formatted(storageName));
+            LOGGER.warn("存储 %s 缺少 pattern_15min，将禁用该存储。".formatted(storageName));
             enabled = false;
             pattern15Min = Path.of("");
         } else {

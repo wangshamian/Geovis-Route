@@ -8,7 +8,7 @@
 这里并未完整覆盖单个端点的全部请求参数等内容。
 但另一方面，这里也包含了那些在我们线上 API 中不可用、而仅在你自行运行或托管的实例上可用的端点的信息，
 例如 [Export](endpoints/export/index.zh.md)、[Health](endpoints/health/index.zh.md) 和 [Status](endpoints/status/index.zh.md)。
-本实例还额外提供基于地形坡度的 [越野路径](endpoints/offroad/index.zh.md) 端点（`POST /v2/offroad`）。
+本实例还额外提供基于地形坡度的 [越野路径](endpoints/offroad/index.zh.md) 端点（`POST /offroad`）。
 
 如果你正在开发 openrouteservice 或运行自己的实例，随附的 [Swagger-UI](#swagger-ui) 可能会对你有所帮助。
 
@@ -35,7 +35,7 @@ openrouteservice 的本地实例同样提供可访问的 swagger-ui。
 通过它可以获取当前版本或较旧版本 openrouteservice 的交互式 API 文档：
 
 1. 检出所需版本或标签的源代码，并在[本地运行服务](/run-instance/index.md)。
-2. 然后你可以在浏览器中访问本地实例托管的 swagger-ui：[http://localhost:8082/ors/swagger-ui/index.html](http://localhost:8082/ors/swagger-ui/index.html)
+2. 然后你可以在浏览器中访问本地实例托管的 swagger-ui：[http://localhost:8082/gr/swagger-ui/index.html](http://localhost:8082/gr/swagger-ui/index.html)
 （你本地环境中的端口可能不同）。
 
 :::warning 提示

@@ -51,7 +51,7 @@ public class TestContainersHelper {
         return new HttpWaitStrategy()
                 .forPort(8080)
                 .forStatusCode(200)
-                .forPath("/ors/v2/health")
+                .forPath("/gr/health")
                 .withReadTimeout(Duration.ofSeconds(5))
                 .withStartupTimeout(defaultStartupTimeout);
         //@formatter:on

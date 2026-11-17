@@ -52,19 +52,19 @@ public class GRGraphManager {
 
         switch (managementProps.getDerivedRepoType()) {
             case HTTP -> {
-                LOGGER.debug("Using HttpGraphRepoClient for repoUrl %s".formatted(managementProps.getDerivedRepoBaseUrl()));
+                LOGGER.debug("使用 HttpGraphRepoClient，repoUrl %s".formatted(managementProps.getDerivedRepoBaseUrl()));
                 orsGraphRepoClient = new HttpGraphRepoClient(managementProps, orsGraphRepoStrategy, orsGraphFileManager);
             }
             case FILESYSTEM -> {
-                LOGGER.debug("Using FileSystemGraphRepoClient for repoUri %s".formatted(managementProps.getDerivedRepoPath()));
+                LOGGER.debug("使用 FileSystemGraphRepoClient，repoUri %s".formatted(managementProps.getDerivedRepoPath()));
                 orsGraphRepoClient = new FileSystemGraphRepoClient(managementProps, orsGraphRepoStrategy, orsGraphFileManager);
             }
             case MINIO -> {
-                LOGGER.debug("Using MinioGraphRepoClient for repoUrl %s".formatted(managementProps.getDerivedRepoBaseUrl()));
+                LOGGER.debug("使用 MinioGraphRepoClient，repoUrl %s".formatted(managementProps.getDerivedRepoBaseUrl()));
                 orsGraphRepoClient = new MinioGraphRepoClient(managementProps, orsGraphRepoStrategy, orsGraphFileManager);
             }
             case NULL -> {
-                LOGGER.debug("No valid repositoryUri configured, using NullGraphRepoClient.");
+                LOGGER.debug("未配置有效的 repositoryUri，使用 NullGraphRepoClient。");
                 orsGraphRepoClient = new NullGraphRepoClient();
             }
         }
@@ -118,28 +118,28 @@ public class GRGraphManager {
         boolean hasDownloadedExtractedGraph = orsGraphFileManager.hasDownloadedExtractedGraph();
 
         if (!hasActiveGraph && !hasDownloadedExtractedGraph && useGraphRepository()) {
-            LOGGER.debug("[%s] No local graph or extracted downloaded graph found - trying to download and extract graph from repository".formatted(getQualifiedProfileName()));
+            LOGGER.debug("[%s] 未找到本地图数据或已解压的下载图数据 - 尝试从仓库下载并解压图数据".formatted(getQualifiedProfileName()));
             downloadAndExtractLatestGraphIfNecessary();
             orsGraphFileManager.activateExtractedDownloadedGraph();
         }
         if (!hasActiveGraph && hasDownloadedExtractedGraph) {
-            LOGGER.debug("[%s] Found extracted downloaded graph only".formatted(getQualifiedProfileName()));
+            LOGGER.debug("[%s] 仅找到已解压的下载图数据".formatted(getQualifiedProfileName()));
             orsGraphFileManager.activateExtractedDownloadedGraph();
         }
         if (hasActiveGraph && hasDownloadedExtractedGraph) {
-            LOGGER.debug("[%s] Found local graph and extracted downloaded graph".formatted(getQualifiedProfileName()));
+            LOGGER.debug("[%s] 找到本地图数据和已解压的下载图数据".formatted(getQualifiedProfileName()));
             orsGraphFileManager.backupExistingGraph();
             orsGraphFileManager.activateExtractedDownloadedGraph();
         }
         if (hasActiveGraph && !hasDownloadedExtractedGraph) {
-            LOGGER.debug("[%s] Found local graph only".formatted(getQualifiedProfileName()));
+            LOGGER.debug("[%s] 仅找到本地图数据".formatted(getQualifiedProfileName()));
         }
     }
 
     public void downloadAndExtractLatestGraphIfNecessary() {
         if (!useGraphRepository()) return;
         if (orsGraphFileManager.isBusy()) {
-            LOGGER.debug("[%s] GRGraphManager is busy - skipping download".formatted(getQualifiedProfileName()));
+            LOGGER.debug("[%s] GRGraphManager 正忙 - 跳过下载".formatted(getQualifiedProfileName()));
             return;
         }
         orsGraphRepoClient.downloadGraphIfNecessary();

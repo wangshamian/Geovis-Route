@@ -72,18 +72,18 @@ public class AppInfo {
             prop.load(in);
             version = prop.getProperty("version");
         } catch (Exception e) {
-            LOGGER.error("Initialization ERROR: cannot read version!? " + e.getMessage());
+            LOGGER.error("初始化错误: 无法读取版本号!? " + e.getMessage());
         }
 
         int indexM = version.indexOf('-');
         if ("${project.version}".equals(version)) {
             VERSION = "0.0";
             SNAPSHOT = true;
-            LOGGER.error("OpenRouteService Initialization WARNING: maven did not preprocess the version file! Do not use the jar for a release!");
+            LOGGER.error("OpenRouteService 初始化警告: maven 未预处理版本文件! 请勿将此 jar 用于正式发布!");
         } else if ("0.0".equals(version)) {
             VERSION = "0.0";
             SNAPSHOT = true;
-            LOGGER.error("OpenRouteService Initialization WARNING: cannot get version!?");
+            LOGGER.error("OpenRouteService 初始化警告: 无法获取版本号!?");
         } else {
             String tmp = version;
             // 丢弃 "-SNAPSHOT" 后缀
@@ -109,7 +109,7 @@ public class AppInfo {
             prop.load(in);
             graphVersion = prop.getProperty("graphVersion", "undefined");
         } catch (Exception e) {
-            LOGGER.error("Initialization ERROR: cannot read engineVersion. {}");
+            LOGGER.error("初始化错误: 无法读取 engineVersion。{}");
         }
         GRAPH_VERSION = graphVersion;
     }

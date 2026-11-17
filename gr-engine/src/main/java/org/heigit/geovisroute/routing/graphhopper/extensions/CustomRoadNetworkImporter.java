@@ -96,7 +96,7 @@ public class CustomRoadNetworkImporter {
             throw new IllegalStateException("Failed to read custom road network file: " + file.toAbsolutePath(), e);
         }
         if (features.isEmpty()) {
-            LOGGER.warn("No line geometry found in custom road network file: {}", file.toAbsolutePath());
+            LOGGER.warn("自定义路网文件中未找到线状几何数据: {}", file.toAbsolutePath());
             return;
         }
 
@@ -144,10 +144,10 @@ public class CustomRoadNetworkImporter {
         }
 
         if (createdNodes == 0 && createdEdges == 0) {
-            LOGGER.warn("Custom road network did not create any node or edge, check the GeoJSON content and tags: {}",
+            LOGGER.warn("自定义路网未创建任何节点或边，请检查 GeoJSON 内容和标签: {}",
                     file.toAbsolutePath());
         } else {
-            LOGGER.info("Custom road network added from {}: nodes={}, edges={}, skippedSegments={}, snapRadius={}m",
+            LOGGER.info("已导入自定义路网 {}: nodes={}, edges={}, skippedSegments={}, snapRadius={}m",
                     file.toAbsolutePath(), createdNodes, createdEdges, skippedWays, snapRadius);
         }
     }
@@ -166,8 +166,8 @@ public class CustomRoadNetworkImporter {
         Map<String, DecimalEncodedValue> encodedValues = resolveEncodedValues(overlayTags);
 
         if (hgvStorage == null && encodedValues.isEmpty()) {
-            LOGGER.info("Custom road overlay is skipped: neither ext_storages.HeavyVehicle (restrictions: true) "
-                    + "nor encoded values {} are available for this profile", ENCODED_VALUE_KEYS.values());
+            LOGGER.info("跳过自定义路网叠加: 当前 profile 既没有 ext_storages.HeavyVehicle (restrictions: true) "
+                    + "也没有可用的 encoded value {}", ENCODED_VALUE_KEYS.values());
             return;
         }
 
@@ -180,14 +180,14 @@ public class CustomRoadNetworkImporter {
                 double[] restrictionValues = parseRestrictions(feature.tags, overlayTags);
                 if (!hasRestriction(restrictionValues)) {
                     skippedFeatures++;
-                    LOGGER.warn("Custom road feature '{}' has none of the overlay tags {}, skipping",
+                    LOGGER.warn("自定义路网要素 '{}' 不含任何叠加标签 {}，跳过",
                             feature.tags.get("name"), overlayTags);
                     continue;
                 }
                 Set<Integer> edgeIds = findMatchingEdges(feature, tolerance, locationIndex);
                 if (edgeIds.isEmpty()) {
                     skippedFeatures++;
-                    LOGGER.warn("Custom road feature '{}' did not match any existing OSM edge within {}m",
+                    LOGGER.warn("自定义路网要素 '{}' 在 {}m 范围内未匹配到任何已有 OSM 边",
                             feature.tags.get("name"), tolerance);
                     continue;
                 }
@@ -200,7 +200,7 @@ public class CustomRoadNetworkImporter {
             close(locationIndex);
         }
 
-        LOGGER.info("Custom road overlay from {}: matchedFeatures={}, matchedEdges={}, skippedFeatures={}, "
+        LOGGER.info("自定义路网叠加来自 {}: matchedFeatures={}, matchedEdges={}, skippedFeatures={}, "
                         + "tolerance={}m, hgvStorage={}, encodedValues={}",
                 file.toAbsolutePath(), matchedFeatures, matchedEdges, skippedFeatures, tolerance,
                 hgvStorage != null, encodedValues.keySet());
@@ -224,7 +224,7 @@ public class CustomRoadNetworkImporter {
             storage.getEdgeRestrictionValues(0, new double[VehicleDimensionRestrictions.COUNT]);
             return storage;
         } catch (RuntimeException e) {
-            LOGGER.warn("HeavyVehicle storage exists but restrictions are disabled: {}", e.getMessage());
+            LOGGER.warn("HeavyVehicle 存储存在但限制功能未启用: {}", e.getMessage());
             return null;
         }
     }
@@ -245,7 +245,7 @@ public class CustomRoadNetworkImporter {
         double[] values = new double[VehicleDimensionRestrictions.COUNT];
         for (String tag : overlayTags) {
             if (!RESTRICTION_INDEX.containsKey(tag)) {
-                LOGGER.warn("Unsupported custom_roads.overlay_tags entry '{}', expected one of {}",
+                LOGGER.warn("不支持的 custom_roads.overlay_tags 项 '{}'，应为以下之一 {}",
                         tag, RESTRICTION_INDEX.keySet());
                 continue;
             }
@@ -262,7 +262,7 @@ public class CustomRoadNetworkImporter {
                 value = OSMValueExtractor.stringToMeter(raw);
             }
             if (Double.isNaN(value) || value <= 0) {
-                LOGGER.warn("Cannot parse '{}' value '{}' for custom road feature '{}', skipping this tag",
+                LOGGER.warn("无法解析 '{}' 的取值 '{}'（自定义路网要素 '{}'），跳过该标签",
                         tag, raw, tags.get("name"));
                 continue;
             }
@@ -448,7 +448,7 @@ public class CustomRoadNetworkImporter {
         way.setTag("point_list", pointList);
 
         if (!osmParsers.acceptWay(way)) {
-            LOGGER.debug("Custom road segment is not accepted by any encoder, tags={}", tags);
+            LOGGER.debug("自定义路段未被任何 encoder 接受，tags={}", tags);
             return false;
         }
 
@@ -588,7 +588,7 @@ public class CustomRoadNetworkImporter {
                 }
             }
         } else {
-            LOGGER.warn("Unsupported GeoJSON geometry type: {}", type);
+            LOGGER.warn("不支持的 GeoJSON 几何类型: {}", type);
         }
     }
 

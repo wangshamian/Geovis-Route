@@ -87,7 +87,7 @@ public class ExportRequest extends ServiceRequest {
 
         // 筛选位于边界框内的节点
         Set<Integer> nodesInBBox = nodesInBBox(gh.getLocationIndex(), nodeAccess, graph);
-        LOGGER.debug("Found %d nodes in bbox.".formatted(nodesInBBox.size()));
+        LOGGER.debug("在 bbox 内找到 %d 个节点。".formatted(nodesInBBox.size()));
         if (nodesInBBox.isEmpty()) { // 没有节点则无法计算导出结果
             res.setWarning(new ExportWarning(ExportWarning.EMPTY_BBOX));
             return res;
@@ -102,7 +102,7 @@ public class ExportRequest extends ServiceRequest {
             while (iter.next()) {
                 int to = iter.getAdjNode();
                 if (nodesInBBox.contains(to)) {
-                    LOGGER.debug("Edge %d: from %d to %d".formatted(iter.getEdge(), from, to));
+                    LOGGER.debug("边 %d: 从 %d 到 %d".formatted(iter.getEdge(), from, to));
                     LineString geo;
                     if (useRealGeometry) {
                         geo = iter.fetchWayGeometry(FetchMode.ALL).toLineString(false);

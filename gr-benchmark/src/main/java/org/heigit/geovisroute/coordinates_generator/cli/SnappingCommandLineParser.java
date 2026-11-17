@@ -87,10 +87,10 @@ public class SnappingCommandLineParser extends CommandLineParser {
         double[] extent = parseExtent(cmd.getOptionValue("e"));
         String[] profiles = parseProfiles(cmd.getOptionValue("p"));
         double radius = Double.parseDouble(cmd.getOptionValue("r", "350"));
-        String baseUrl = cmd.getOptionValue("u", "http://localhost:8080/ors");
+        String baseUrl = cmd.getOptionValue("u", "http://localhost:8080/gr");
 
         LOGGER.info(
-                "Creating CoordinateGeneratorSnapping with numPoints={}, extent={}, radius={}, profiles={}, baseUrl={}",
+                "正在创建 CoordinateGeneratorSnapping，numPoints={}, extent={}, radius={}, profiles={}, baseUrl={}",
                 numPoints, extent, radius, profiles, baseUrl);
 
         return new CoordinateGeneratorSnapping(numPoints, extent, radius, profiles, baseUrl);

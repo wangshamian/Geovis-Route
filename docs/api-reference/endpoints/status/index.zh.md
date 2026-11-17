@@ -4,7 +4,7 @@
 该端点不在公共 API 中提供，但你可以在运行自己的 openrouteservice 实例时使用。
 :::
 
-GET 请求 http://localhost:8082/ors/v2/status（主机和端口取决于具体配置）返回正在运行的实例的基本信息：
+GET 请求 http://localhost:8082/gr/status（主机和端口取决于具体配置）返回正在运行的实例的基本信息：
 
 * `languages`：可用语言
 * `engine`：

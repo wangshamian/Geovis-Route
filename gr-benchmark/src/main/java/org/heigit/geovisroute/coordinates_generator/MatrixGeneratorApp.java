@@ -27,27 +27,25 @@ public class MatrixGeneratorApp {
                 return;
             }
 
-            LOGGER.info("Creating coordinate generator for matrices...");
+            LOGGER.info("正在创建用于矩阵的坐标生成器...");
             CoordinateGeneratorMatrix generator = cli.createGenerator();
 
-            LOGGER.info("Generating {} matrices...", generator.getNumMatrices());
+            LOGGER.info("正在生成 {} 个矩阵...", generator.getNumMatrices());
             generator.generateMatrices();
             LOGGER.info("\n");
 
             List<Matrix> result = generator.getResult();
-            LOGGER.info("Writing {} matrices to {}", result.size(), cli.getOutputFile());
+            LOGGER.info("正在将 {} 个矩阵写入 {}", result.size(), cli.getOutputFile());
             generator.writeToCSV(cli.getOutputFile());
 
             LOGGER.info("\n");
-            LOGGER.info("Successfully generated {} matri{}",
-                    result.size(),
-                    result.size() != 1 ? "ces" : "x");
-            LOGGER.info("Results written to: {}", cli.getOutputFile());
+            LOGGER.info("已成功生成 {} 个矩阵", result.size());
+            LOGGER.info("结果已写入：{}", cli.getOutputFile());
         } catch (NumberFormatException e) {
-            LOGGER.error("Error parsing numeric arguments: {}", e.getMessage());
+            LOGGER.error("解析数值参数时出错：{}", e.getMessage());
             System.exit(1);
         } catch (IOException e) {
-            LOGGER.error("Error writing to output file: {}", e.getMessage());
+            LOGGER.error("写入输出文件时出错：{}", e.getMessage());
             System.exit(1);
         }
         System.exit(0);

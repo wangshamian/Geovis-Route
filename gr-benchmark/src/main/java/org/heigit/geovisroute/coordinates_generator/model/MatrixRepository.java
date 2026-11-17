@@ -36,7 +36,7 @@ public class MatrixRepository {
             }
             return false;
         } catch (Exception e) {
-            LOGGER.error("Error adding matrix: {}", e.getMessage());
+            LOGGER.error("添加矩阵时出错：{}", e.getMessage());
             return false;
         } finally {
             lock.writeLock().unlock();

@@ -40,7 +40,7 @@ public class TrafficLinkMetadata {
                     }
                 }
             } catch (Exception e) {
-                LOGGER.debug("Couldn't process property.");
+                LOGGER.debug("无法处理属性。");
             }
         }
     }

@@ -229,7 +229,7 @@ public class LMPreparationHandler {
      */
     public List<PrepareLandmarks> prepare(List<LMConfig> lmConfigs, BaseGraph baseGraph, EncodingManager encodingManager, StorableProperties properties, LocationIndex locationIndex, final boolean closeEarly) {
         if (lmConfigs.isEmpty()) {
-            LOGGER.info("There are no LMs to prepare");
+            LOGGER.info("没有需要准备的 LM");
             return Collections.emptyList();
         }
         List<PrepareLandmarks> preparations = createPreparations(lmConfigs, baseGraph, encodingManager, locationIndex);
@@ -239,17 +239,17 @@ public class LMPreparationHandler {
             final int count = i + 1;
             final String name = prepare.getLMConfig().getName();
             prepareRunnables.add(() -> {
-                LOGGER.info(count + "/" + lmConfigs.size() + " calling LM prepare.doWork for " + prepare.getLMConfig().getName() + " ... (" + getMemInfo() + ")");
+                LOGGER.info(count + "/" + lmConfigs.size() + " 正在调用 " + prepare.getLMConfig().getName() + " 的 LM prepare.doWork ... (" + getMemInfo() + ")");
                 Thread.currentThread().setName(name);
                 prepare.doWork();
                 if (closeEarly)
                     prepare.close();
-                LOGGER.info("LM {} finished {}", name, getMemInfo());
+                LOGGER.info("LM {} 已完成 {}", name, getMemInfo());
                 properties.put(Landmark.PREPARE + "date." + name, createFormatter().format(new Date()));
             });
         }
         GHUtility.runConcurrently(prepareRunnables.stream(), preparationThreads);
-        LOGGER.info("Finished LM preparation, {}", getMemInfo());
+        LOGGER.info("LM 准备完成，{}", getMemInfo());
         return preparations;
     }
 
@@ -257,7 +257,7 @@ public class LMPreparationHandler {
      * This method creates the landmark storages ready for landmark creation.
      */
     public List<PrepareLandmarks> createPreparations(List<LMConfig> lmConfigs, BaseGraph graph, EncodedValueLookup encodedValueLookup, LocationIndex locationIndex) {
-        LOGGER.info("Creating LM preparations, {}", getMemInfo());
+        LOGGER.info("正在创建 LM 准备，{}", getMemInfo());
         List<LandmarkSuggestion> lmSuggestions = new ArrayList<>(lmSuggestionsLocations.size());
         if (!lmSuggestionsLocations.isEmpty()) {
             try {
@@ -320,13 +320,13 @@ public class LMPreparationHandler {
                 new InputStreamReader(new FileInputStream(splitAreaLocation), UTF_CS)) {
             JsonFeatureCollection result = objectMapper.readValue(reader, JsonFeatureCollection.class);
             if (splitAreaLocation.isEmpty()) {
-                LOGGER.info("Loaded built-in landmark splitting collection from {}", builtinSplittingFile);
+                LOGGER.info("已从 {} 加载内置的 landmark 分割集合", builtinSplittingFile);
             } else {
-                LOGGER.info("Loaded landmark splitting collection from {}", splitAreaLocation);
+                LOGGER.info("已从 {} 加载 landmark 分割集合", splitAreaLocation);
             }
             return result;
         } catch (IOException e) {
-            LOGGER.error("Problem while reading border map GeoJSON. Skipping this.", e);
+            LOGGER.error("读取边界地图 GeoJSON 时出错，跳过此项。", e);
             return null;
         }
     }

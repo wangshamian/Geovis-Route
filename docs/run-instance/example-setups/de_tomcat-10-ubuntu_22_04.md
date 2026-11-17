@@ -189,7 +189,7 @@ Version des WAR-Files herunter.
 > sudo systemctl status openrouteservice.service
 ```
 
-Navigiere zu [http://localhost:8080/ors/v2/health](http://localhost:8080/ors/v2/health), um den Status von
+Navigiere zu [http://localhost:8080/gr/health](http://localhost:8080/gr/health), um den Status von
 openrouteservice zu sehen.
 Die Ausgabe sollte wie folgt aussehen:
 
@@ -293,11 +293,11 @@ Die folgenden Schritte sind immer notwendig, wenn du die Konfiguration, die Ordn
 Nachdem openrouteservice nun korrekt mit den richtigen Konfigurationen eingerichtet ist,
 überprüfe die Logdateien im Verzeichnis `/opt/openrouteservice/logs/ors.log` oder die Tomcat-Logdateien im Verzeichnis
 `/opt/tomcat/logs`.
-Navigiere zu [http://localhost:8080/ors/v2/health](http://localhost:8080/ors/v2/health) in deinem Browser, um den
+Navigiere zu [http://localhost:8080/gr/health](http://localhost:8080/gr/health) in deinem Browser, um den
 Status von openrouteservice zu überprüfen, oder sende eine Anfrage an die API.
 
 ```shell
-> curl http://localhost:8080/ors/v2/health
+> curl http://localhost:8080/gr/health
 ```
 
 Die Ausgabe sollte wie folgt aussehen:
@@ -316,14 +316,14 @@ Passe den Test entsprechend deiner heruntergeladenen OSM-Datei an.
 ```shell
 # Teste eine Route von A nach B in Andorra
 > curl -X POST \
-  'http://localhost:8080/ors/v2/directions/driving-car' \
+  'http://localhost:8080/gr/directions/driving-car' \
   -H 'Content-Type: application/json; charset=utf-8' \
   -H 'Accept: application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8' \
   -d '{"coordinates":[[1.5036892890930176, 42.4972256361276],[1.6298711299896242, 42.57831077271361]]}'
 
 # Teste eine Isochrone von einem Punkt in Andorra
 > curl -X POST \
-  'http://localhost:8080/ors/v2/isochrones/driving-car' \
+  'http://localhost:8080/gr/isochrones/driving-car' \
   -H 'Content-Type: application/json; charset=utf-8' \
   -H 'Accept: application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8' \
   -d '{"locations":[[1.5036892890930176, 42.4972256361276]],"range":[300]}'

@@ -174,7 +174,7 @@ public final class PtRouterTripBasedImpl implements PtRouter {
                     .map(l -> stopWithTimeDelta(l.edge.getPlatformDescriptor(), l.currentTime - initialTime.toEpochMilli()))
                     .collect(Collectors.toList());
             for (TripBasedRouter.StopWithTimeDelta accessStation : accessStations) {
-                logger.debug("access {}", accessStation);
+                logger.debug("接入 {}", accessStation);
             }
             egressStationLabels = egress(startNode, destNode);
             egressStations = egressStationLabels.stream()

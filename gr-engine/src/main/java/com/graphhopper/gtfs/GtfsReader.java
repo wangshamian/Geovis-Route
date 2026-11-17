@@ -182,7 +182,7 @@ class GtfsReader {
     }
 
     private void insertInboundTransfers(GtfsStorage.PlatformDescriptor toPlatformDescriptor, NavigableMap<Integer, Integer> departureTimeline) {
-        LOGGER.debug("Creating transfers to stop {}, platform {}", toPlatformDescriptor.stop_id, toPlatformDescriptor);
+        LOGGER.debug("正在为站点 {}、站台 {} 创建换乘", toPlatformDescriptor.stop_id, toPlatformDescriptor);
         List<Transfer> transfersToPlatform = transfers.getTransfersToStop(toPlatformDescriptor.stop_id, routeIdOrNull(toPlatformDescriptor));
         transfersToPlatform.forEach(transfer -> {
             GtfsStorage.FeedIdWithStopId stopId = new GtfsStorage.FeedIdWithStopId(id, transfer.from_stop_id);
@@ -193,14 +193,14 @@ class GtfsReader {
                         GtfsStorage.PlatformDescriptor fromPlatformDescriptor = ptEdge.getAttrs().platformDescriptor;
                         if (fromPlatformDescriptor.stop_id.equals(transfer.from_stop_id) &&
                                 (transfer.from_route_id == null && fromPlatformDescriptor instanceof GtfsStorage.RouteTypePlatform || transfer.from_route_id != null && GtfsStorage.PlatformDescriptor.route(id, transfer.from_stop_id, transfer.from_route_id).equals(fromPlatformDescriptor))) {
-                            LOGGER.debug("  Creating transfers from stop {}, platform {}", transfer.from_stop_id, fromPlatformDescriptor);
+                            LOGGER.debug("  正在从站点 {}、站台 {} 创建换乘", transfer.from_stop_id, fromPlatformDescriptor);
                             insertTransferEdges(ptEdge.getAdjNode(), transfer.min_transfer_time, departureTimeline, toPlatformDescriptor);
                         }
                     }
                 }
             } else {
                 Stop stop = gtfsStorage.getGtfsFeeds().get(stopId.feedId).stops.get(stopId.stopId);
-                LOGGER.warn("Stop {} has no station node", stopId);
+                LOGGER.warn("站点 {} 没有对应的 station 节点", stopId);
             }
         });
     }
@@ -304,7 +304,7 @@ class GtfsReader {
     }
 
     private void wireUpDepartureTimeline(Stop stop, NavigableMap<Integer, Integer> departureTimeline, int route_type, GtfsStorage.PlatformDescriptor platformDescriptor) {
-        LOGGER.debug("Creating timeline at stop {} for departure platform {}", stop.stop_id, platformDescriptor);
+        LOGGER.debug("正在为站点 {} 的出发站台 {} 创建时间线", stop.stop_id, platformDescriptor);
         int platformEnterNode = out.createNode();
         int streetNode = gtfsStorage.getStationNodes().get(new GtfsStorage.FeedIdWithStopId(platformDescriptor.feed_id, platformDescriptor.stop_id));
         out.createEdge(streetNode, platformEnterNode, new PtEdgeAttributes(GtfsStorage.EdgeType.ENTER_PT, 0,null, route_type, null,0, -1, null, platformDescriptor));
@@ -312,7 +312,7 @@ class GtfsReader {
     }
 
     private void wireUpArrivalTimeline(Stop stop, NavigableMap<Integer, Integer> arrivalTimeline, int route_type, GtfsStorage.PlatformDescriptor platformDescriptor) {
-        LOGGER.debug("Creating timeline at stop {} for arrival platform {}", stop.stop_id, platformDescriptor);
+        LOGGER.debug("正在为站点 {} 的到达站台 {} 创建时间线", stop.stop_id, platformDescriptor);
         int platformExitNode = out.createNode();
         int streetNode = gtfsStorage.getStationNodes().get(new GtfsStorage.FeedIdWithStopId(platformDescriptor.feed_id, platformDescriptor.stop_id));
         out.createEdge(platformExitNode, streetNode, new PtEdgeAttributes(GtfsStorage.EdgeType.EXIT_PT, 0, null, route_type, null, 0, -1, null, platformDescriptor));

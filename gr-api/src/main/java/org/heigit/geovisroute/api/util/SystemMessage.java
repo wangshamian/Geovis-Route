@@ -123,11 +123,11 @@ public class SystemMessage {
                 }
             } catch (Exception e) {
                 // 否则完全忽略不完整的消息
-                LOGGER.warn("Invalid SystemMessage object in ors config %s.".formatted(message.toString().substring(18)));
+                LOGGER.warn("ors 配置中的 SystemMessage 对象无效：%s。".formatted(message.toString().substring(18)));
             }
         }
         if (!messages.isEmpty())
-            LOGGER.info("SystemMessage loaded %s messages.".formatted(messages.size()));
+            LOGGER.info("SystemMessage 已加载 %s 条消息。".formatted(messages.size()));
     }
 
     private static void loadConditionsForMessage(SystemMessageProperties.MessageObject message, List<Condition> conditions) {
@@ -139,7 +139,7 @@ public class SystemMessage {
             }
         } catch (Exception e) {
             // 忽略缺失的条件块并保留消息
-            LOGGER.info("Invalid or missing condition in message object.");
+            LOGGER.info("消息对象中的条件无效或缺失。");
         }
     }
 
@@ -196,7 +196,7 @@ public class SystemMessage {
                     return matchRequestPreferences(params);
                 }
                 default -> // 未知规则
-                        LOGGER.warn("Invalid condition set in system_message.");
+                        LOGGER.warn("system_message 中设置了无效的条件。");
             }
             return false;
         }

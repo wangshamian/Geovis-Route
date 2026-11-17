@@ -65,7 +65,7 @@ public class PreparePartition {
         ExecutorService threadPool = java.util.concurrent.Executors.newFixedThreadPool(Math.min(getMaxThreadCount(), Runtime.getRuntime().availableProcessors()));
         InverseSemaphore inverseSemaphore = new InverseSemaphore();
         inverseSemaphore.beforeSubmit();
-        LOGGER.debug("Submitting task for cell 1");
+        LOGGER.debug("正在提交 cell 1 的任务");
         threadPool.execute(new InertialFlow(nodeToCellArray, baseGraph, encodingManager, edgeFilters, threadPool, inverseSemaphore));
         try {
             inverseSemaphore.awaitCompletion();

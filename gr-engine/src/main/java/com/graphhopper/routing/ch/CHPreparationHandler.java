@@ -193,16 +193,16 @@ public class CHPreparationHandler {
 
     public Map<String, PrepareContractionHierarchies.Result> prepare(BaseGraph baseGraph, StorableProperties properties, List<CHConfig> chConfigs, final boolean closeEarly) {
         if (chConfigs.isEmpty()) {
-            LOGGER.info("There are no CHs to prepare");
+            LOGGER.info("没有需要准备的 CH");
             return Collections.emptyMap();
         }
-        LOGGER.info("Creating CH preparations, {}", getMemInfo());
+        LOGGER.info("正在创建 CH 准备，{}", getMemInfo());
         Map<String, PrepareContractionHierarchies.Result> results = Collections.synchronizedMap(new LinkedHashMap<>());
         List<Runnable> runnables = new ArrayList<>(chConfigs.size());
         for (int i = 0; i < chConfigs.size(); ++i) {
             CHConfig chConfig = chConfigs.get(i);
-            LOGGER.info((i + 1) + "/" + chConfigs.size() + " Setting up CH preparation for profile " +
-                    "'" + chConfig.getName() + "' " + chConfig.getTraversalMode() + " ... (" + getMemInfo() + ")");
+            LOGGER.info((i + 1) + "/" + chConfigs.size() + " 正在为 profile " +
+                    "'" + chConfig.getName() + "' 设置 CH 准备 " + chConfig.getTraversalMode() + " ... (" + getMemInfo() + ")");
             runnables.add(() -> {
                 final String name = chConfig.getName();
                 // toString is not taken into account so we need to cheat, see http://stackoverflow.com/q/6113746/194609 for other options
@@ -218,7 +218,7 @@ public class CHPreparationHandler {
             });
         }
         GHUtility.runConcurrently(runnables.stream(), preparationThreads);
-        LOGGER.info("Finished CH preparation, {}", getMemInfo());
+        LOGGER.info("CH 准备完成，{}", getMemInfo());
         return results;
     }
 
@@ -228,7 +228,7 @@ public class CHPreparationHandler {
         if (!hasCHConfigs())
             throw new IllegalStateException("No CH profiles found");
 
-        LOGGER.info("Creating CH preparations, {}", getMemInfo());
+        LOGGER.info("正在创建 CH 准备，{}", getMemInfo());
         for (CHConfig chConfig : chConfigs) {
             addPreparation(createCHPreparation(baseGraph, chConfig));
         }

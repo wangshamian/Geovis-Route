@@ -28,7 +28,7 @@ This is an example request for a base graph for the profile `driving-car`:
 
 ```shell
 curl -X 'POST' \
-  'http://localhost:8082/ors/v2/export/driving-car/json' \
+  'http://localhost:8082/gr/export/driving-car/json' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -253,7 +253,7 @@ This is an example request for a TopoJSON graph for the profile `driving-car`:
 
 ```shell
 curl -X 'POST' \
-  'http://localhost:8082/ors/v2/export/driving-car/topojson' \
+  'http://localhost:8082/gr/export/driving-car/topojson' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{

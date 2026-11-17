@@ -20,7 +20,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.PriorityQueue;
 
 public class OffRoader {
@@ -64,6 +67,14 @@ public class OffRoader {
     private double offroadSpeedKmh = 25;
     private double offroadPenalty = 1.5;
     /**
+     * 军车细分类型，决定上/下坡衰减强度与公路速度折减。
+     */
+    private MilitaryVehicleType militaryVehicleType = MilitaryVehicleType.WHEELED;
+    /**
+     * 地表覆盖约束提供者（WorldCover），决定禁行网格与越野速度折减，为空时不启用。
+     */
+    private ObstacleProvider obstacleProvider;
+    /**
      * 混合路由按时间搜索时使用的网格边长（米）与全图最大速度（km/h）。
      */
     private double cellSideMeters = 300;
@@ -82,6 +93,16 @@ public class OffRoader {
     public OffRoader(ElevationProvider eleProvider, RoadAccessProvider roadAccessProvider) {
         this.eleProvider = eleProvider;
         this.roadAccessProvider = roadAccessProvider;
+    }
+
+    public void setMilitaryVehicleType(MilitaryVehicleType militaryVehicleType) {
+        if (militaryVehicleType != null) {
+            this.militaryVehicleType = militaryVehicleType;
+        }
+    }
+
+    public void setObstacleProvider(ObstacleProvider obstacleProvider) {
+        this.obstacleProvider = obstacleProvider;
     }
 
     public OffRoadResponse offroad(GHRequest request) {
@@ -199,8 +220,20 @@ public class OffRoader {
                     RoadAccessProvider.RoadAccess roadAccess = roadAccessProvider.getRoad(center.lat, center.lon);
                     if (roadAccess != null && roadAccess.speedKmh() > 0) {
                         offRoadGrid.roadSpeedKmh = roadAccess.speedKmh();
+                        offRoadGrid.roadLabel = roadAccess.roadLabel() == null ? "" : roadAccess.roadLabel();
+                        offRoadGrid.roadName = roadAccess.roadName() == null ? "" : roadAccess.roadName();
+                        offRoadGrid.roadEdgeId = roadAccess.edgeId();
+                        offRoadGrid.roadAdjNode = roadAccess.adjNode();
+                        offRoadGrid.roadSnapLat = roadAccess.snapLat();
+                        offRoadGrid.roadSnapLon = roadAccess.snapLon();
                         maxSpeedKmh = Math.max(maxSpeedKmh, offRoadGrid.roadSpeedKmh);
                     }
+                }
+                // 越野避让：网格中心落在水体/建筑/铁路等要素上时不可通行；
+                // 混合路由下已吸附公路的网格视为桥梁/涵洞跨越，不做避让，避免错误切断跨河道路
+                if (obstacleProvider != null && offRoadGrid.roadSpeedKmh <= 0
+                        && obstacleProvider.isBlocked(center.lat, center.lon)) {
+                    offRoadGrid.blocked = true;
                 }
                 grids.add(offRoadGrid);
 
@@ -241,10 +274,15 @@ public class OffRoader {
         OffRoadGrid[][] cellIndex = new OffRoadGrid[rows][cols];
         for (OffRoadGrid grid : grids) {
             cellIndex[grid.y][grid.x] = grid;
-            // 起终点所在网格始终放行，避免用户选点恰好落在陡坡上导致无法起算
-            if (grid.slope > maxSlope && grid != startGrid && grid != endGrid) {
-                // 坡度超限的网格视为障碍，直接关闭
+            // 起终点所在网格始终放行，避免用户选点恰好落在陡坡或避让要素上导致无法起算
+            if ((grid.slope > maxSlope || grid.blocked) && grid != startGrid && grid != endGrid) {
+                // 坡度超限或落在避让要素上的网格视为障碍，直接关闭
                 grid.isInCloseList = true;
+                // 统计因地表覆盖禁行（水体/湿地/冰雪等）被排除的网格，供结果说明
+                if (grid.blocked && obstacleProvider != null) {
+                    offRoadResponse.addBlockedCell(
+                            obstacleProvider.surfaceName(grid.center.lat, grid.center.lon));
+                }
                 Coordinate[] coordinates = new Coordinate[grid.coordinates.size()];
                 for (int i = 0; i < grid.coordinates.size(); i++) {
                     GHPoint gridPoint = grid.coordinates.get(i);
@@ -348,16 +386,34 @@ public class OffRoader {
         }
         Collections.reverse(pathGrids);
 
+        // 纯越野：统计沿途经过的地表构成，用于说明哪些地表导致减速
+        if (!hybrid && obstacleProvider != null && pathGrids.size() > 1) {
+            List<OffRoadResponse.SurfaceSlice> pathSurfaces =
+                    new ArrayList<>(collectSurfaces(pathGrids).values());
+            pathSurfaces.sort(Comparator.comparingDouble(OffRoadResponse.SurfaceSlice::getDistance).reversed());
+            offRoadResponse.setPathSurfaces(pathSurfaces);
+        }
+
         if (hybrid) {
             // 混合路由的 g 即累计用时（秒），同时按公路/越野连续段切分明细
             double roadDistance = 0;
             double offRoadDistance = 0;
             double segmentDistance = 0;
             double segmentDuration = 0;
+            double segmentAscent = 0;
+            double segmentDescent = 0;
+            double segmentMaxSlope = 0;
+            String segmentRoadLabel = "";
+            String segmentReason = "";
+            // 该段经过的公路名称（去重、按出现顺序），越野段为空
+            LinkedHashSet<String> segmentRoadNames = new LinkedHashSet<>();
             boolean segmentOnRoad = false;
             OffRoadGrid segmentStart = pathGrids.get(0);
             List<GHPoint> segmentPoints = new ArrayList<>();
             segmentPoints.add(new GHPoint(segmentStart.center.lat, segmentStart.center.lon));
+            // 该段经过的网格，公路段据此拼接真实道路几何
+            List<OffRoadGrid> segmentGrids = new ArrayList<>();
+            segmentGrids.add(segmentStart);
             for (int i = 1; i < pathGrids.size(); i++) {
                 OffRoadGrid previous = pathGrids.get(i - 1);
                 OffRoadGrid current = pathGrids.get(i);
@@ -367,23 +423,67 @@ public class OffRoader {
                 boolean onRoad = previous.roadSpeedKmh > 0 && current.roadSpeedKmh > 0;
                 if (i == 1) {
                     segmentOnRoad = onRoad;
+                    if (!onRoad) {
+                        segmentReason = "起点附近无可用道路，起步即越野";
+                    } else {
+                        segmentReason = "从公路起点出发，沿路网行驶";
+                    }
+                    segmentMaxSlope = current.slope;
+                    if (onRoad) {
+                        segmentRoadLabel = current.roadLabel;
+                        if (!previous.roadName.isEmpty()) {
+                            segmentRoadNames.add(previous.roadName);
+                        }
+                    }
                 } else if (onRoad != segmentOnRoad) {
                     // 通行方式切换，结算上一段
-                    offRoadResponse.addSegment(new OffRoadResponse.Segment(segmentOnRoad,
-                            segmentDistance, Math.round(segmentDuration),
-                            segmentStart.center.lat, segmentStart.center.lon,
-                            previous.center.lat, previous.center.lon,
-                            new ArrayList<>(segmentPoints)));
+                    OffRoadResponse.Segment settled = addHybridSegment(offRoadResponse, segmentOnRoad,
+                            segmentDistance, segmentDuration, segmentAscent, segmentDescent, segmentMaxSlope,
+                            segmentRoadLabel, segmentRoadNames,
+                            segmentOnRoad ? roadGeometry(segmentGrids) : null,
+                            segmentReason, segmentStart, previous, new ArrayList<>(segmentPoints));
+                    if (!segmentOnRoad) {
+                        settled.setSurfaces(sortSurfaces(collectSurfaces(segmentGrids)));
+                    }
                     segmentDistance = 0;
                     segmentDuration = 0;
+                    segmentAscent = 0;
+                    segmentDescent = 0;
+                    segmentMaxSlope = 0;
+                    segmentRoadLabel = "";
+                    segmentRoadNames = new LinkedHashSet<>();
                     segmentOnRoad = onRoad;
                     segmentStart = previous;
                     segmentPoints = new ArrayList<>();
                     segmentPoints.add(new GHPoint(previous.center.lat, previous.center.lon));
+                    segmentGrids = new ArrayList<>();
+                    segmentGrids.add(previous);
+                    if (onRoad) {
+                        segmentReason = "接入公路，转入路网行驶";
+                        segmentRoadLabel = current.roadLabel;
+                    } else {
+                        segmentReason = hasRoadAhead(pathGrids, i)
+                                ? "绕行公路代价更高，选择越野捷径"
+                                : "公路在此中断，转入越野";
+                    }
                 }
                 segmentPoints.add(new GHPoint(current.center.lat, current.center.lon));
+                segmentGrids.add(current);
                 segmentDistance += meters;
                 segmentDuration += hybridStepCost(previous, current);
+                double elevationDelta = current.elevation - previous.elevation;
+                if (elevationDelta > 0) {
+                    segmentAscent += elevationDelta;
+                } else {
+                    segmentDescent -= elevationDelta;
+                }
+                segmentMaxSlope = Math.max(segmentMaxSlope, current.slope);
+                if (segmentRoadLabel.isEmpty() && !current.roadLabel.isEmpty()) {
+                    segmentRoadLabel = current.roadLabel;
+                }
+                if (!current.roadName.isEmpty()) {
+                    segmentRoadNames.add(current.roadName);
+                }
                 if (onRoad) {
                     roadDistance += meters;
                 } else {
@@ -392,11 +492,14 @@ public class OffRoader {
             }
             if (pathGrids.size() > 1) {
                 OffRoadGrid last = pathGrids.get(pathGrids.size() - 1);
-                offRoadResponse.addSegment(new OffRoadResponse.Segment(segmentOnRoad,
-                        segmentDistance, Math.round(segmentDuration),
-                        segmentStart.center.lat, segmentStart.center.lon,
-                        last.center.lat, last.center.lon,
-                        segmentPoints));
+                OffRoadResponse.Segment settled = addHybridSegment(offRoadResponse, segmentOnRoad,
+                        segmentDistance, segmentDuration, segmentAscent, segmentDescent, segmentMaxSlope,
+                        segmentRoadLabel, segmentRoadNames,
+                        segmentOnRoad ? roadGeometry(segmentGrids) : null,
+                        segmentReason, segmentStart, last, segmentPoints);
+                if (!segmentOnRoad) {
+                    settled.setSurfaces(sortSurfaces(collectSurfaces(segmentGrids)));
+                }
             }
             offRoadResponse.setDurationSeconds(Math.round(endNode.g));
             offRoadResponse.setRoadDistance(roadDistance);
@@ -605,26 +708,204 @@ public class OffRoader {
                 new GlobalCoordinates(from.center.lat, from.center.lon),
                 new GlobalCoordinates(to.center.lat, to.center.lon));
         boolean onRoad = from.roadSpeedKmh > 0 && to.roadSpeedKmh > 0;
-        double speedKmh = onRoad ? Math.min(from.roadSpeedKmh, to.roadSpeedKmh) : offroadSpeed(from, to);
+        double speedKmh = onRoad
+                ? Math.max(5, Math.min(from.roadSpeedKmh, to.roadSpeedKmh) * militaryVehicleType.getRoadSpeedFactor())
+                : offroadSpeed(from, to);
         double seconds = meters / (speedKmh / 3.6);
         return onRoad ? seconds : seconds * offroadPenalty;
     }
 
     /**
+     * 记录一个公路/越野分段，并换算平均坡度（度）等展示用指标。
+     */
+    private OffRoadResponse.Segment addHybridSegment(OffRoadResponse response, boolean onRoad, double distance,
+                                                     double duration, double ascent, double descent, double maxSlope,
+                                                     String roadLabel, LinkedHashSet<String> roadNames,
+                                                     List<GHPoint> directionPoints, String reason,
+                                                     OffRoadGrid start, OffRoadGrid end, List<GHPoint> points) {
+        double avgSlope = distance > 0 ? Math.toDegrees(Math.atan((ascent + descent) / distance)) : 0;
+        // 公路段优先按真实道路几何计算方向，取不到几何时退回网格中心点
+        List<GHPoint> pointsForDirection = directionPoints == null || directionPoints.size() < 2
+                ? points : directionPoints;
+        OffRoadResponse.Segment segment = new OffRoadResponse.Segment(onRoad, distance, Math.round(duration),
+                start.center.lat, start.center.lon, end.center.lat, end.center.lon,
+                avgSlope, maxSlope, ascent, descent, roadLabel,
+                new ArrayList<>(roadNames), buildDirections(pointsForDirection), reason, points);
+        response.addSegment(segment);
+        return segment;
+    }
+
+    /**
+     * 统计一组连续网格经过的地表构成，同类地表按里程累计。
+     */
+    private Map<String, OffRoadResponse.SurfaceSlice> collectSurfaces(List<OffRoadGrid> grids) {
+        Map<String, OffRoadResponse.SurfaceSlice> surfaces = new LinkedHashMap<>();
+        if (obstacleProvider == null || grids == null || grids.size() < 2) {
+            return surfaces;
+        }
+        for (int i = 1; i < grids.size(); i++) {
+            OffRoadGrid previous = grids.get(i - 1);
+            OffRoadGrid current = grids.get(i);
+            String label = obstacleProvider.surfaceName(current.center.lat, current.center.lon);
+            if (label == null) {
+                continue;
+            }
+            double meters = GeoUtils.getDistance(
+                    new GlobalCoordinates(previous.center.lat, previous.center.lon),
+                    new GlobalCoordinates(current.center.lat, current.center.lon));
+            surfaces.computeIfAbsent(label, key -> new OffRoadResponse.SurfaceSlice(key,
+                            obstacleProvider.speedFactor(current.center.lat, current.center.lon)))
+                    .addDistance(meters);
+        }
+        return surfaces;
+    }
+
+    /**
+     * 按里程从多到少排列地表构成，前端优先展示占比最大的地表。
+     */
+    private List<OffRoadResponse.SurfaceSlice> sortSurfaces(
+            Map<String, OffRoadResponse.SurfaceSlice> surfaces) {
+        List<OffRoadResponse.SurfaceSlice> list = new ArrayList<>(surfaces.values());
+        list.sort(Comparator.comparingDouble(OffRoadResponse.SurfaceSlice::getDistance).reversed());
+        return list;
+    }
+
+    /**
+     * 按真实道路几何拼接该段的公路线形：逐格取吸附边的几何点串，统一朝行进方向后首尾相接。
+     */
+    private List<GHPoint> roadGeometry(List<OffRoadGrid> grids) {
+        if (roadAccessProvider == null || grids == null || grids.isEmpty()) {
+            return null;
+        }
+        List<GHPoint> geometry = new ArrayList<>();
+        int lastEdgeId = -1;
+        for (OffRoadGrid grid : grids) {
+            // 同一路网边只取一次，避免相邻网格重复拼接同一段几何
+            if (grid.roadEdgeId < 0 || grid.roadEdgeId == lastEdgeId) {
+                continue;
+            }
+            List<GHPoint> edgePoints = roadAccessProvider.getEdgeGeometry(grid.roadEdgeId, grid.roadAdjNode);
+            if (edgePoints == null || edgePoints.isEmpty()) {
+                continue;
+            }
+            lastEdgeId = grid.roadEdgeId;
+            List<GHPoint> ordered = new ArrayList<>(edgePoints);
+            GHPoint reference = geometry.isEmpty()
+                    ? new GHPoint(grid.roadSnapLat, grid.roadSnapLon)
+                    : geometry.get(geometry.size() - 1);
+            if (pointDistance(ordered.get(0), reference)
+                    > pointDistance(ordered.get(ordered.size() - 1), reference)) {
+                Collections.reverse(ordered);
+            }
+            for (GHPoint point : ordered) {
+                if (geometry.isEmpty() || pointDistance(geometry.get(geometry.size() - 1), point) > 1) {
+                    geometry.add(point);
+                }
+            }
+        }
+        return geometry.size() >= 2 ? geometry : null;
+    }
+
+    /**
+     * 两个经纬度点之间的距离（米）。
+     */
+    private double pointDistance(GHPoint a, GHPoint b) {
+        return GeoUtils.getDistance(
+                new GlobalCoordinates(a.lat, a.lon),
+                new GlobalCoordinates(b.lat, b.lon));
+    }
+
+    /**
+     * 把分段折线按约 400 米一段归并成方向切片，避免网格锯齿产生过多碎方向。
+     */
+    private List<OffRoadResponse.DirectionSlice> buildDirections(List<GHPoint> points) {
+        List<OffRoadResponse.DirectionSlice> slices = new ArrayList<>();
+        if (points == null || points.size() < 2) {
+            return slices;
+        }
+        final double chunkMeters = 400;
+        GHPoint chunkStart = points.get(0);
+        GHPoint lastPoint = points.get(0);
+        double chunkDistance = 0;
+        for (int i = 1; i < points.size(); i++) {
+            GHPoint current = points.get(i);
+            chunkDistance += GeoUtils.getDistance(
+                    new GlobalCoordinates(lastPoint.lat, lastPoint.lon),
+                    new GlobalCoordinates(current.lat, current.lon));
+            lastPoint = current;
+            boolean isLast = i == points.size() - 1;
+            if (!isLast && chunkDistance < chunkMeters) {
+                continue;
+            }
+            if (chunkDistance <= 0) {
+                continue;
+            }
+            String label = compassLabel(bearing(chunkStart.lat, chunkStart.lon, current.lat, current.lon));
+            OffRoadResponse.DirectionSlice lastSlice = slices.isEmpty() ? null : slices.get(slices.size() - 1);
+            if (lastSlice != null && lastSlice.getLabel().equals(label)) {
+                lastSlice.addDistance(chunkDistance);
+            } else {
+                slices.add(new OffRoadResponse.DirectionSlice(label, chunkDistance));
+            }
+            chunkStart = current;
+            chunkDistance = 0;
+        }
+        return slices;
+    }
+
+    /**
+     * 起点指向终点的方位角（度，正北为 0，顺时针递增）。
+     */
+    private double bearing(double fromLat, double fromLon, double toLat, double toLon) {
+        double lat1 = Math.toRadians(fromLat);
+        double lat2 = Math.toRadians(toLat);
+        double deltaLon = Math.toRadians(toLon - fromLon);
+        double y = Math.sin(deltaLon) * Math.cos(lat2);
+        double x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(deltaLon);
+        return (Math.toDegrees(Math.atan2(y, x)) + 360) % 360;
+    }
+
+    /**
+     * 方位角转八方位中文描述。
+     */
+    private String compassLabel(double bearingDeg) {
+        String[] labels = {"北", "东北", "东", "东南", "南", "西南", "西", "西北"};
+        return "向" + labels[(int) Math.round(bearingDeg / 45.0) % 8];
+    }
+
+    /**
+     * 判断当前位置之后是否还会经过公路，用于解释为何离开公路。
+     */
+    private boolean hasRoadAhead(List<OffRoadGrid> pathGrids, int fromIndex) {
+        for (int i = fromIndex; i < pathGrids.size(); i++) {
+            if (pathGrids.get(i).roadSpeedKmh > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * 越野速度：上坡与下坡分别衰减，不能一视同仁。
-     * 上坡需要输出更大扭矩，坡度越大衰减越快（最低保留 25%）；
-     * 下坡主要是制动与安全控制，衰减幅度明显更小（最低保留 60%）。
+     * 上坡需要输出更大扭矩，坡度越大衰减越快；
+     * 下坡主要是制动与安全控制，衰减幅度明显更小。具体系数由军车类型决定。
      */
     private double offroadSpeed(OffRoadGrid from, OffRoadGrid to) {
         double ratio = maxSlope <= 0 ? 0 : Math.min(1, Math.abs(to.slope) / maxSlope);
         double elevationDelta = to.elevation - from.elevation;
         double factor;
         if (elevationDelta > 0) {
-            factor = Math.max(0.25, 1 - 0.75 * ratio);
+            factor = Math.max(militaryVehicleType.getUphillMinFactor(),
+                    1 - militaryVehicleType.getUphillDrop() * ratio);
         } else if (elevationDelta < 0) {
-            factor = Math.max(0.6, 1 - 0.3 * ratio);
+            factor = Math.max(militaryVehicleType.getDownhillMinFactor(),
+                    1 - militaryVehicleType.getDownhillDrop() * ratio);
         } else {
             factor = 1;
+        }
+        // 地表覆盖折减：林地/灌丛/冰雪等按类别降低越野速度
+        if (obstacleProvider != null) {
+            factor *= Math.max(0.2, obstacleProvider.speedFactor(to.center.lat, to.center.lon));
         }
         return offroadSpeedKmh * factor;
     }
@@ -642,10 +923,10 @@ public class OffRoader {
     }
 
     /**
-     * 判断网格是否不可通行（越界或坡度超限）。
+     * 判断网格是否不可通行（越界、坡度超限或落在避让要素上）。
      */
     private boolean isBlocked(OffRoadGrid grid) {
-        return grid == null || grid.slope > maxSlope;
+        return grid == null || grid.slope > maxSlope || grid.blocked;
     }
 
     /**

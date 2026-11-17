@@ -188,7 +188,7 @@ public class StorableProperties {
 
                 int index = line.indexOf("=");
                 if (index < 0) {
-                    LOGGER.warn("Skipping configuration at line:" + line);
+                    LOGGER.warn("跳过该行配置:" + line);
                     continue;
                 }
 

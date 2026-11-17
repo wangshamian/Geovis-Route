@@ -139,7 +139,7 @@ public class HereTrafficGraphStorageBuilder extends AbstractGraphStorageBuilder 
                     matchingRadius = parameters.getRadius();
                 else {
                     ErrorLoggingUtility.logMissingConfigParameter(HereTrafficGraphStorageBuilder.class, MATCHING_RADIUS);
-                    LOGGER.info("The Here matching radius is not set. The default is applied!");
+                    LOGGER.info("未设置 Here 匹配半径，将使用默认值！");
                 }
 
                 gh = graphhopper;
@@ -155,7 +155,7 @@ public class HereTrafficGraphStorageBuilder extends AbstractGraphStorageBuilder 
             }
             storage = new TrafficGraphStorage();
         } else {
-            LOGGER.info("Traffic not enabled.");
+            LOGGER.info("未启用路况功能。");
         }
         return storage;
     }
@@ -193,7 +193,7 @@ public class HereTrafficGraphStorageBuilder extends AbstractGraphStorageBuilder 
 
     private void writeLogFiles(TrafficData hereTrafficData) throws SchemaException {
         if (outputLog) {
-            LOGGER.info("Write log files.");
+            LOGGER.info("正在写入日志文件。");
             SimpleFeatureType featureType = null;
             featureType = DataUtilities.createType("my", "geom:MultiLineString");
             File osmMatchedFile;
@@ -220,7 +220,7 @@ public class HereTrafficGraphStorageBuilder extends AbstractGraphStorageBuilder 
                     SimpleFeature feature = featureBuilder.buildFeature(null);
                     matchedOSMCollection.add(feature);
                 } catch (ParseException e) {
-                    LOGGER.error("Error adding machedOSMLinks", e);
+                    LOGGER.error("添加 machedOSMLinks 时出错", e);
                 }
             });
             for (IntCursor linkID : matchedHereLinks) {
@@ -232,7 +232,7 @@ public class HereTrafficGraphStorageBuilder extends AbstractGraphStorageBuilder 
                     SimpleFeature feature = featureBuilder.buildFeature(null);
                     matchedHereCollection.add(feature);
                 } catch (ParseException e) {
-                    LOGGER.error("Error adding machedHEreLinks", e);
+                    LOGGER.error("添加 machedHEreLinks 时出错", e);
                 }
             }
 
@@ -241,10 +241,10 @@ public class HereTrafficGraphStorageBuilder extends AbstractGraphStorageBuilder 
                     if (osmMatchedFile.createNewFile()) {
                         featureJSON.writeFeatureCollection(matchedOSMCollection, osmMatchedFile);
                     } else {
-                        LOGGER.error("Error creating log file for matched OSM data.");
+                        LOGGER.error("为匹配的 OSM 数据创建日志文件时出错。");
                     }
                 } catch (IOException e) {
-                    LOGGER.error("Error writing matched OSM data to log file.", e);
+                    LOGGER.error("将匹配的 OSM 数据写入日志文件时出错。", e);
                 }
             }
             if (!matchedHereCollection.isEmpty()) {
@@ -252,10 +252,10 @@ public class HereTrafficGraphStorageBuilder extends AbstractGraphStorageBuilder 
                     if (hereMatchedFile.createNewFile()) {
                         featureJSON.writeFeatureCollection(matchedHereCollection, hereMatchedFile);
                     } else {
-                        LOGGER.error("Error creating log file for matched Here data.");
+                        LOGGER.error("为匹配的 Here 数据创建日志文件时出错。");
                     }
                 } catch (IOException e) {
-                    LOGGER.error("Error writing matched Here data to log file.", e);
+                    LOGGER.error("将匹配的 Here 数据写入日志文件时出错。", e);
                 }
             }
         }
@@ -287,16 +287,16 @@ public class HereTrafficGraphStorageBuilder extends AbstractGraphStorageBuilder 
                                                    double originalTrafficLinkLength, Geometry geometry, boolean bothDirections) {
         RouteSegmentInfo[] matchedSegments = new RouteSegmentInfo[0];
         if (geometry == null) {
-            LOGGER.info("Teadrop node.");
+            LOGGER.info("Teadrop 节点。");
             return matchedSegments;
         }
         try {
             matchedSegments = getMatchedSegmentsInternal(geometry, originalTrafficLinkLength, trafficLinkFunctionalClass, bothDirections, matchingRadius);
         } catch (Exception e) {
             if (e.getMessage().startsWith("Sequence is broken for submitted track"))
-                LOGGER.debug("Error while matching: " + e);
+                LOGGER.debug("匹配时出错: " + e);
             else
-                LOGGER.warn("Error while matching: " + e);
+                LOGGER.warn("匹配时出错: " + e);
         }
         return matchedSegments;
     }
@@ -307,26 +307,26 @@ public class HereTrafficGraphStorageBuilder extends AbstractGraphStorageBuilder 
             try {
                 hereTrafficReader.readData();
             } catch (IOException e) {
-                LOGGER.error("Severe error reading " + HereTrafficReader.class, e);
+                LOGGER.error("读取 " + HereTrafficReader.class + " 时发生严重错误", e);
                 return;
             }
             if (hereTrafficReader.isInitialized()) {
-                LOGGER.info("Starting MapMatching traffic data");
+                LOGGER.info("开始对路况数据进行地图匹配");
                 processTrafficPatterns(hereTrafficReader.getHereTrafficData().getPatterns());
                 processLinks(graphHopper, hereTrafficReader.getHereTrafficData().getLinks());
                 storage.setMaxTrafficSpeeds();
                 storage.setMatched();
                 storage.flush();
-                LOGGER.info("Flush and lock storage.");
+                LOGGER.info("刷新并锁定存储。");
                 writeLogFiles(hereTrafficReader.getHereTrafficData());
-                LOGGER.info("Traffic data successfully processed");
+                LOGGER.info("路况数据处理成功");
             } else {
                 throw new MissingResourceException("Here traffic is not build, enabled but the Here data sets couldn't be initialized. Make sure the config contains the path variables and they're correct.", this.getClass().toString(), "streets || pattern_15min || ref_pattern");
             }
         } else if (!enabled) {
-            LOGGER.debug("Traffic not enabled or already matched. Skipping match making.");
+            LOGGER.debug("未启用路况或已完成匹配，跳过匹配。");
         } else {
-            LOGGER.info("Traffic data already matched. Skipping match making.");
+            LOGGER.info("路况数据已匹配，跳过匹配。");
         }
     }
 
@@ -337,9 +337,9 @@ public class HereTrafficGraphStorageBuilder extends AbstractGraphStorageBuilder 
                 pb.step();
             }
         } catch (Exception e) {
-            LOGGER.error("Error processing here traffic patterns with error: " + e);
+            LOGGER.error("处理 Here 路况模式时出错: " + e);
         } finally {
-            LOGGER.info("Processed " + storage.getPatternCount() + " traffic patterns");
+            LOGGER.info("已处理 " + storage.getPatternCount() + " 个路况模式");
         }
     }
 
@@ -351,9 +351,9 @@ public class HereTrafficGraphStorageBuilder extends AbstractGraphStorageBuilder 
                 pb.step();
             }
         } catch (Exception e) {
-            LOGGER.error("Error processing here traffic links with error: " + e);
+            LOGGER.error("处理 Here 路况 link 时出错: " + e);
         } finally {
-            LOGGER.info("Matched " + 100 * getMatchedHereLinksCount() / trafficLinksCount + "% Here links (" + getMatchedHereLinksCount() + " out of " + trafficLinksCount + ")");
+            LOGGER.info("已匹配 " + 100 * getMatchedHereLinksCount() / trafficLinksCount + "% 的 Here link（已匹配 " + getMatchedHereLinksCount() + " 个，共 " + trafficLinksCount + " 个）");
         }
     }
 
@@ -473,10 +473,10 @@ public class HereTrafficGraphStorageBuilder extends AbstractGraphStorageBuilder 
         } catch (IllegalArgumentException e) {
             // Graphhopper throws an IllegalArgumentException when the matching fails. This is to be expected when matching here traffic on osm files without the corresponding edges.
             // The exception is caught and logged as a trace to avoid cluttering the log with expected exceptions.
-            LOGGER.trace("Error while matching: " + e);
+            LOGGER.trace("匹配时出错: " + e);
             return new RouteSegmentInfo[]{};
         } catch (Exception e) {
-            LOGGER.error("Error while matching: " + e);
+            LOGGER.error("匹配时出错: " + e);
             return new RouteSegmentInfo[]{};
         }
     }

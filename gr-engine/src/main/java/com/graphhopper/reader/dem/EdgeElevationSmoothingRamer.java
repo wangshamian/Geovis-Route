@@ -41,7 +41,7 @@ public class EdgeElevationSmoothingRamer {
 
         if (depth > 1000) {
             // implement stack-based version if this is really a problem in real world, see #3202
-            LOGGER.warn("max recursion depth reached, remaining point list: " + pointList);
+            LOGGER.warn("已达最大递归深度，剩余点列表: " + pointList);
             return;
         }
 

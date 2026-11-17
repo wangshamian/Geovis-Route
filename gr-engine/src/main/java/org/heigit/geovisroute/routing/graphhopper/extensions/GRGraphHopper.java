@@ -166,7 +166,7 @@ public class GRGraphHopper extends GraphHopperGtfs {
         if (customRoads == null || customRoads.getFile() == null || customRoads.getFile().isBlank()) {
             return;
         }
-        LOGGER.info("Importing custom road network from '{}'", customRoads.getFile());
+        LOGGER.info("正在从 '{}' 导入自定义路网", customRoads.getFile());
         new CustomRoadNetworkImporter(getBaseGraph(), getEncodingManager(), getOSMParsers())
                 .importRoads(customRoads);
     }
@@ -174,11 +174,11 @@ public class GRGraphHopper extends GraphHopperGtfs {
     @Override
     protected void cleanUp() {
         if (LOGGER.isInfoEnabled())
-            LOGGER.info("call cleanUp for '%s' ".formatted(getGraphHopperLocation()));
+            LOGGER.info("对 '%s' 调用 cleanUp ".formatted(getGraphHopperLocation()));
         BaseGraph baseGraph = getBaseGraph();
         if (baseGraph != null) {
             if (LOGGER.isInfoEnabled())
-                LOGGER.info("graph %s, details:%s".formatted(baseGraph, baseGraph.toDetailsString()));
+                LOGGER.info("图 %s，详情:%s".formatted(baseGraph, baseGraph.toDetailsString()));
             int prevNodeCount = baseGraph.getNodes();
             int ex = baseGraph.getAllEdges().length();
 //            List<FlagEncoder> list = getEncodingManager().fetchEdgeEncoders();
@@ -187,7 +187,7 @@ public class GRGraphHopper extends GraphHopperGtfs {
 //                );
             getProperties().put("elevation", hasElevation());
         } else {
-            LOGGER.info("graph GraphHopperStorage is null?!");
+            LOGGER.info("GraphHopperStorage 图对象为空?!");
         }
         super.cleanUp();
     }
@@ -220,11 +220,11 @@ public class GRGraphHopper extends GraphHopperGtfs {
                          ObjectInputStream ois = new ObjectInputStream(fis)) {
                         tmcEdges = (HashMap<Integer, Long>) ois.readObject();
                         osmId2EdgeIds = (HashMap<Long, ArrayList<Integer>>) ois.readObject();
-                        LOGGER.info("Serialized HashMap data is saved in trafficEdges");
+                        LOGGER.info("序列化的 HashMap 数据已保存到 trafficEdges");
                     } catch (IOException ioe) {
                         LOGGER.error(Arrays.toString(ioe.getStackTrace()));
                     } catch (ClassNotFoundException c) {
-                        LOGGER.error("Class not found");
+                        LOGGER.error("未找到类");
                         LOGGER.error(Arrays.toString(c.getStackTrace()));
                     }
                 }
@@ -234,7 +234,7 @@ public class GRGraphHopper extends GraphHopperGtfs {
                      ObjectOutputStream oos = new ObjectOutputStream(fos)) {
                     oos.writeObject(tmcEdges);
                     oos.writeObject(osmId2EdgeIds);
-                    LOGGER.info("Serialized HashMap data is saved in trafficEdges");
+                    LOGGER.info("序列化的 HashMap 数据已保存到 trafficEdges");
                 } catch (IOException ioe) {
                     LOGGER.error(Arrays.toString(ioe.getStackTrace()));
                 }
@@ -344,7 +344,7 @@ public class GRGraphHopper extends GraphHopperGtfs {
                     try {
                         storageBuilder.postProcess(this);
                     } catch (SchemaException e) {
-                        LOGGER.error("Error building the here traffic storage.");
+                        LOGGER.error("构建 Here 路况存储时出错。");
                         throw new RuntimeException(e);
                     }
                 }

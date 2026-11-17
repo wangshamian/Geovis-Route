@@ -49,7 +49,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @Tag(name = "Directions Service", description = "获取不同交通方式的路线导航")
-@RequestMapping("/v2/directions")
+@RequestMapping("/directions")
 @ApiResponse(responseCode = "400", description = "请求不正确，因此无法处理。")
 @ApiResponse(responseCode = "404", description = "无法找到某个元素。如有可能，会提供更详细的错误码。")
 @ApiResponse(responseCode = "405", description = "不支持指定的 HTTP 方法。更多细节请参阅端点文档。")

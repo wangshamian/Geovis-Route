@@ -77,22 +77,22 @@ public class HereTrafficReader {
         try {
             SimpleFeatureCollection rawGeometries = readHereGeometries();
             createHereGeometries(rawGeometries);
-            LOGGER.info("Here link geometries pre-processed");
+            LOGGER.info("Here link 几何数据预处理完成");
 
             HashMap<Integer, EnumMap<TrafficEnums.TravelDirection, Integer[]>> referencePatterns = readRefPatterns();
-            LOGGER.info("Here reference patterns pre-processed");
+            LOGGER.info("Here 参考 pattern 预处理完成");
 
             Map<Integer, TrafficPattern> patterns = readPatterns();
-            LOGGER.info("Here patterns pre-processed");
+            LOGGER.info("Here pattern 预处理完成");
 
 
             generatePatterns(referencePatterns, patterns);
-            LOGGER.info("Here input data processed successfully");
+            LOGGER.info("Here 输入数据处理成功");
 
             isInitialized = true;
         } catch (IOException ioe) {
             // 读取数据时出现问题
-            LOGGER.error("Could not access file(s) required for Here traffic data");
+            LOGGER.error("无法访问 Here 路况数据所需的文件");
             throw ioe;
         }
         currentInstance = this;
@@ -187,10 +187,10 @@ public class HereTrafficReader {
             SimpleFeatureSource featureSource = store.getFeatureSource();
             collection = featureSource.getFeatures();
         } catch (IOException e) {
-            LOGGER.error("Error reading here shape file with error: " + e);
+            LOGGER.error("读取 Here shape 文件时出错: " + e);
             throw e;
         } catch (Exception e) {
-            LOGGER.error("Unknown error while reading here shape file with error: " + e);
+            LOGGER.error("读取 Here shape 文件时发生未知错误: " + e);
             throw e;
         }
         return collection;
@@ -220,10 +220,10 @@ public class HereTrafficReader {
                     try {
                         hereTrafficData.setLink(new TrafficLink(linkId, reader.read(geometryString), properties, distCalc));
                     } catch (ParseException e) {
-                        LOGGER.info("Couldn't parse here geometry for Link_ID: " + linkId);
+                        LOGGER.info("无法解析 Link_ID 为 " + linkId + " 的 Here 几何数据");
                     }
                 } else {
-                    LOGGER.debug("Geometry malformed. Skip parsing here geometry for Link_ID: " + linkId);
+                    LOGGER.debug("几何数据格式错误，跳过解析 Link_ID 为 " + linkId + " 的 Here 几何数据");
                 }
                 // 处理要素
                 linkCounter += 1;
@@ -231,7 +231,7 @@ public class HereTrafficReader {
         } finally {
             iterator.close();
         }
-        LOGGER.info(linkCounter + " Here links found");
+        LOGGER.info("共找到 " + linkCounter + " 个 Here link");
     }
 
     public TrafficData getHereTrafficData() {

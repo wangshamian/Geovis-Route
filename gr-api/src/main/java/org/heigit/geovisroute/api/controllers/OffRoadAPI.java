@@ -3,8 +3,11 @@ package org.heigit.geovisroute.api.controllers;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.graphhopper.GHRequest;
 import com.graphhopper.OffRoadResponse;
+import com.graphhopper.offroad.MilitaryVehicleType;
+import com.graphhopper.offroad.ObstacleProvider;
 import com.graphhopper.offroad.OffRoader;
 import com.graphhopper.offroad.RoadAccessProvider;
+import com.graphhopper.offroad.WorldCoverProvider;
 import com.graphhopper.reader.dem.ElevationProvider;
 import com.graphhopper.util.JsonFeature;
 import com.graphhopper.util.PointList;
@@ -19,12 +22,22 @@ import org.heigit.geovisroute.routing.RoutingProfileManager;
 import org.heigit.geovisroute.routing.graphhopper.extensions.GRGraphHopperConfig;
 import org.heigit.geovisroute.routing.graphhopper.extensions.offroad.GraphRoadAccessProvider;
 import org.heigit.geovisroute.routing.graphhopper.extensions.parsers.FlagEncoderNames;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -35,9 +48,10 @@ import java.util.Map;
  */
 @RestController
 @Tag(name = "Off Road Service", description = "基于网格坡度分析的越野路径规划")
-@RequestMapping("/v2")
+@RequestMapping
 public class OffRoadAPI {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(OffRoadAPI.class);
     private static final double DEFAULT_GRID_INTERVAL = 300;
     private static final double MIN_GRID_INTERVAL = 10;
     private static final double MAX_GRID_INTERVAL = 1000;
@@ -66,6 +80,15 @@ public class OffRoadAPI {
     private static final int MAX_PROFILE_SAMPLES = 128;
 
     private final ApiEngineProperties apiEngineProperties;
+    /**
+     * 地表覆盖提供者（WorldCover），决定禁行区域与越野速度折减，未配置时为 null。
+     */
+    private final ObstacleProvider obstacleProvider;
+    /**
+     * WorldCover 彩色预览图与元数据，供前端影像图层叠加，未配置时为 null。
+     */
+    private final byte[] worldCoverPreview;
+    private final String worldCoverMetaJson;
     private volatile ElevationProvider elevationProvider;
     /**
      * SRTM 高程数据源在创建瓦片 DataAccess 时不是线程安全的，
@@ -73,8 +96,102 @@ public class OffRoadAPI {
      */
     private final Object offroadLock = new Object();
 
-    public OffRoadAPI(ApiEngineProperties apiEngineProperties) {
+    public OffRoadAPI(ApiEngineProperties apiEngineProperties,
+                      @Value("${ors.offroad.worldcover_image:}") String worldCoverImage,
+                      @Value("${ors.offroad.worldcover_meta:}") String worldCoverMeta) {
         this.apiEngineProperties = apiEngineProperties;
+        Path worldCoverImagePath = resolveRegularFile(worldCoverImage);
+        Path worldCoverMetaPath = resolveRegularFile(worldCoverMeta);
+        this.obstacleProvider = createWorldCoverProvider(worldCoverImagePath, worldCoverMetaPath);
+        this.worldCoverPreview = readWorldCoverPreview(worldCoverImagePath);
+        this.worldCoverMetaJson = readWorldCoverMeta(worldCoverMetaPath);
+    }
+
+    private Path resolveRegularFile(String configured) {
+        if (configured == null || configured.isBlank()) {
+            return null;
+        }
+        Path path = Paths.get(configured);
+        if (!Files.isRegularFile(path)) {
+            LOGGER.warn("文件不存在，已跳过加载：{}", path.toAbsolutePath());
+            return null;
+        }
+        return path;
+    }
+
+    private WorldCoverProvider createWorldCoverProvider(Path imagePath, Path metaPath) {
+        if (imagePath == null || metaPath == null) {
+            return null;
+        }
+        try {
+            WorldCoverProvider provider = new WorldCoverProvider(imagePath, metaPath);
+            LOGGER.info("已加载地表覆盖栅格：{}（{} x {}）", imagePath.toAbsolutePath(),
+                    provider.getWidth(), provider.getHeight());
+            return provider;
+        } catch (IOException e) {
+            LOGGER.warn("地表覆盖栅格加载失败，已跳过：{}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 读取与类别栅格同名的彩色预览图，如 worldcover-taipei.png -> worldcover-taipei-preview.png。
+     */
+    private byte[] readWorldCoverPreview(Path imagePath) {
+        if (imagePath == null) {
+            return null;
+        }
+        String fileName = imagePath.getFileName().toString();
+        int dot = fileName.lastIndexOf('.');
+        String previewName = dot > 0
+                ? fileName.substring(0, dot) + "-preview" + fileName.substring(dot)
+                : fileName + "-preview";
+        Path previewPath = imagePath.resolveSibling(previewName);
+        try {
+            return Files.readAllBytes(previewPath);
+        } catch (IOException e) {
+            LOGGER.warn("地表覆盖预览图读取失败：{}", e.getMessage());
+            return null;
+        }
+    }
+
+    private String readWorldCoverMeta(Path metaPath) {
+        if (metaPath == null) {
+            return null;
+        }
+        try {
+            return Files.readString(metaPath, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            LOGGER.warn("地表覆盖元数据读取失败：{}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 返回地表覆盖元数据（bbox、宽高），供前端定位影像图层。
+     */
+    @GetMapping(value = "/offroad/worldcover", produces = "application/json;charset=UTF-8")
+    @Operation(description = "返回地表覆盖栅格的 bbox 与尺寸", summary = "WorldCover Metadata")
+    public ResponseEntity<String> worldCoverMeta() {
+        if (worldCoverMetaJson == null) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok().header("Cache-Control", "no-store").body(worldCoverMetaJson);
+    }
+
+    /**
+     * 返回地表覆盖彩色预览图，前端以单张影像叠加，避免逐要素渲染。
+     */
+    @GetMapping(value = "/offroad/worldcover.png", produces = "image/png")
+    @Operation(description = "返回地表覆盖彩色预览图", summary = "WorldCover Preview")
+    public ResponseEntity<byte[]> worldCoverPreview() {
+        if (worldCoverPreview == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_PNG)
+                .header("Cache-Control", "max-age=3600")
+                .body(worldCoverPreview);
     }
 
     @PostMapping(value = "/offroad", produces = "application/json;charset=UTF-8")
@@ -133,15 +250,28 @@ public class OffRoadAPI {
         ghRequest.putHint("grid_interval", gridInterval);
         ghRequest.putHint("max_slope", maxSlope);
 
-        // 是否混合由接口决定：/v2/offroad 恒为纯越野，/v2/hybrid 恒为公路+越野
+        // 是否混合由接口决定：/offroad 恒为纯越野，/hybrid 恒为公路+越野
         boolean hybrid = forceHybrid;
         String hybridProfile = request.profile() == null || request.profile().isBlank()
                 ? DEFAULT_HYBRID_PROFILE : request.profile().trim();
-        double offroadSpeedKmh = request.offroadSpeedKmh() == null ? speedKmh : request.offroadSpeedKmh();
+        // 军车细分类型：仅混合路由有意义，默认轮式，行为与原有实现一致
+        MilitaryVehicleType militaryVehicleType = MilitaryVehicleType.WHEELED;
+        if (hybrid) {
+            try {
+                militaryVehicleType = MilitaryVehicleType.fromValue(request.militaryType());
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body(Map.of("error", String.valueOf(e.getMessage())));
+            }
+        }
+        double offroadSpeedKmh = request.offroadSpeedKmh() == null
+                ? (hybrid ? militaryVehicleType.getBaseSpeedKmh() : speedKmh)
+                : request.offroadSpeedKmh();
         if (offroadSpeedKmh <= 0) {
             return ResponseEntity.badRequest().body(Map.of("error", "offroad_speed_kmh 需为正数"));
         }
-        double offroadPenalty = request.offroadPenalty() == null ? DEFAULT_OFFROAD_PENALTY : request.offroadPenalty();
+        double offroadPenalty = request.offroadPenalty() == null
+                ? (hybrid ? militaryVehicleType.getDefaultRoadPenalty() : DEFAULT_OFFROAD_PENALTY)
+                : request.offroadPenalty();
         if (offroadPenalty < 1) {
             return ResponseEntity.badRequest().body(Map.of("error", "offroad_penalty 不能小于 1"));
         }
@@ -161,7 +291,10 @@ public class OffRoadAPI {
         OffRoadResponse offRoadResponse;
         try {
             synchronized (offroadLock) {
-                offRoadResponse = new OffRoader(elevationProvider, roadAccessProvider).offroad(ghRequest);
+                OffRoader offRoader = new OffRoader(elevationProvider, roadAccessProvider);
+                offRoader.setMilitaryVehicleType(militaryVehicleType);
+                offRoader.setObstacleProvider(obstacleProvider);
+                offRoadResponse = offRoader.offroad(ghRequest);
             }
         } catch (IllegalArgumentException e) {
             // 网格数量超限、计算超时等参数相关问题统一返回 400
@@ -197,6 +330,8 @@ public class OffRoadAPI {
         result.put("hybrid", hybrid);
         if (hybrid) {
             result.put("profile", hybridProfile);
+            result.put("military_type", militaryVehicleType.getValue());
+            result.put("military_type_label", militaryVehicleType.getLabel());
             result.put("offroad_speed_kmh", offroadSpeedKmh);
             result.put("offroad_penalty", offroadPenalty);
             // 分段明细：按公路/越野连续段给出里程、耗时与起止坐标
@@ -216,11 +351,31 @@ public class OffRoadAPI {
                     segmentCoordinates.add(List.of(round6(point.lon), round6(point.lat)));
                 }
                 item.put("coordinates", segmentCoordinates);
+                // 展示用信息：道路类型/名称、行进方向、坡度与爬升下降、切换原因
+                item.put("road_type", segment.getRoadLabel());
+                item.put("road_names", segment.getRoadNames());
+                List<Map<String, Object>> directions = new ArrayList<>();
+                for (OffRoadResponse.DirectionSlice direction : segment.getDirections()) {
+                    Map<String, Object> slice = new LinkedHashMap<>();
+                    slice.put("label", direction.getLabel());
+                    slice.put("distance", Math.round(direction.getDistance()));
+                    directions.add(slice);
+                }
+                item.put("directions", directions);
+                item.put("avg_slope", round1(segment.getAvgSlope()));
+                item.put("max_slope", round1(segment.getMaxSlope()));
+                item.put("ascent", Math.round(segment.getAscent()));
+                item.put("descent", Math.round(segment.getDescent()));
+                item.put("reason", segment.getReason());
+                // 越野段经过的地表构成与速度折减，供前端说明减速原因
+                item.put("surfaces", toSurfaceItems(segment.getSurfaces()));
                 segments.add(item);
             }
             result.put("segments", segments);
         }
         result.put("point_count", coordinates.size());
+        // 纯越野路径沿途的地表构成，按里程从多到少
+        result.put("surfaces", toSurfaceItems(offRoadResponse.getPathSurfaces()));
         result.put("summary", buildSummary(distance, elevation, offRoadResponse, speedKmh, hybrid));
         if (coordinates.isEmpty()) {
             // 无可行路径时给出可操作的提示，便于前端直接展示
@@ -264,7 +419,28 @@ public class OffRoadAPI {
         summary.put("ascend", elevation == null ? null : elevation.get("ascend"));
         summary.put("descend", elevation == null ? null : elevation.get("descend"));
         summary.put("barrier_count", response.getBarrierCount());
+        // 因特殊地表（水体/湿地/冰雪/红树林）禁行而被排除的网格，说明路径为何绕行
+        summary.put("blocked_cells", response.getBlockedCellCount());
+        summary.put("blocked_surfaces", response.getBlockedSurfaceCounts());
         return summary;
+    }
+
+    /**
+     * 地表构成转成前端展示结构：名称、里程（米）与速度折减系数。
+     */
+    private List<Map<String, Object>> toSurfaceItems(List<OffRoadResponse.SurfaceSlice> surfaces) {
+        List<Map<String, Object>> items = new ArrayList<>();
+        if (surfaces == null) {
+            return items;
+        }
+        for (OffRoadResponse.SurfaceSlice surface : surfaces) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("label", surface.getLabel());
+            item.put("distance", Math.round(surface.getDistance()));
+            item.put("speed_factor", surface.getSpeedFactor());
+            items.add(item);
+        }
+        return items;
     }
 
     /**
@@ -448,6 +624,7 @@ public class OffRoadAPI {
                                  @JsonProperty("hybrid") Boolean hybrid,
                                  @JsonProperty("profile") String profile,
                                  @JsonProperty("offroad_speed_kmh") Double offroadSpeedKmh,
-                                 @JsonProperty("offroad_penalty") Double offroadPenalty) {
+                                 @JsonProperty("offroad_penalty") Double offroadPenalty,
+                                 @JsonProperty("military_type") String militaryType) {
     }
 }

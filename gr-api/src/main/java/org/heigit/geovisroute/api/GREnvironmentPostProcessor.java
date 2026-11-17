@@ -31,29 +31,29 @@ public class GREnvironmentPostProcessor implements EnvironmentPostProcessor {
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment environment, SpringApplication application) {
         if (environment.matchesProfiles("test")) {
-            log.info("No additional configuration loaded, test profile is active.");
+            log.info("未加载额外配置，当前处于 test profile。");
             return;
         }
         // 使用自定义配置 yml 文件的内容覆盖 application.yml 中的值。
         List<String> configLocations = new ArrayList<>();
         log.info("");
-        log.info("Configuration lookup started.");
+        log.info("开始查找配置。");
         if (!StringUtility.isNullOrEmpty(System.getProperty(GR_CONFIG_LOCATION_PROPERTY))) {
             configLocations.add(System.getProperty(GR_CONFIG_LOCATION_PROPERTY));
-            log.info("Configuration file set by program argument.");
+            log.info("配置文件已通过程序启动参数指定。");
         }
         if (configLocations.isEmpty() && !StringUtility.isNullOrEmpty(System.getenv(GR_CONFIG_LOCATION_ENV))) {
             String configPath = System.getenv(GR_CONFIG_LOCATION_ENV);
             File configFile = new File(configPath);
             // 检查文件是否存在并记录相应的消息
             if (configFile.exists()) {
-                log.info("ORS config file found at: " + configFile.getAbsolutePath());
+                log.info("在以下路径找到 ORS 配置文件：" + configFile.getAbsolutePath());
                 configLocations.add(configPath);
-                log.info("Configuration file set by environment variable.");
+                log.info("配置文件已通过环境变量指定。");
             } else {
                 // 仍然添加它以触发错误并停止 ORS
                 configLocations.add(configPath);
-                log.error("ORS config file not found at: " + configPath);
+                log.error("在以下路径未找到 ORS 配置文件：" + configPath);
             }
         }
         if (configLocations.isEmpty()) {
@@ -61,7 +61,7 @@ public class GREnvironmentPostProcessor implements EnvironmentPostProcessor {
             configLocations.add("./gr-config.yml");
             configLocations.add(home + "/.config/openrouteservice/gr-config.yml");
             configLocations.add("/etc/openrouteservice/gr-config.yml");
-            log.info("Configuration file lookup by default locations.");
+            log.info("按默认位置继续查找配置文件。");
         }
         for (String path : configLocations) {
             try {
@@ -69,11 +69,11 @@ public class GREnvironmentPostProcessor implements EnvironmentPostProcessor {
                 if (!sources.isEmpty()) {
                     environment.getPropertySources().addAfter(StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME, sources.get(0));
                     System.setProperty(GR_CONFIG_LOCATION_PROPERTY, path);
-                    log.info("Loaded file '%s'.".formatted(path));
+                    log.info("已加载文件 '%s'。".formatted(path));
                     break;
                 }
             } catch (IllegalStateException | IOException ignored) {
-                log.debug("Config file '%s' not found.".formatted(path));
+                log.debug("未找到配置文件 '%s'。".formatted(path));
             }
         }
         var relevantPrefixes = List.of(
@@ -94,10 +94,10 @@ public class GREnvironmentPostProcessor implements EnvironmentPostProcessor {
                 .sorted(Entry.comparingByKey()).toList();
         if (!relevantENVs.isEmpty()) {
             log.info("");
-            log.info("Environment variables overriding openrouteservice configuration parameters detected: ");
+            log.info("检测到覆盖 openrouteservice 配置参数的环境变量：");
             relevantENVs.forEach(env -> log.info("%s=%s".formatted(env.getKey(), env.getValue())));
         }
-        log.info("Configuration lookup finished.");
+        log.info("配置查找结束。");
         log.info("");
     }
 }

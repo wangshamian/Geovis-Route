@@ -18,7 +18,7 @@ public class MatrixCalculator {
     private static final String LOCATIONS_KEY = "locations";
     private static final String SOURCES_KEY = "sources";
     private static final String DESTINATIONS_KEY = "destinations";
-    private static final String ERROR_CALCULATING_MATRIX = "Error calculating matrix: {}";
+    private static final String ERROR_CALCULATING_MATRIX = "计算矩阵时出错：{}";
 
     private final String baseUrl;
     private final Map<String, String> headers;
@@ -39,7 +39,7 @@ public class MatrixCalculator {
             String response = requestExecutor.apply(request);
             
             if (response == null) {
-                LOGGER.debug("Received null response from matrix API");
+                LOGGER.debug("矩阵 API 返回了 null 响应");
                 return Optional.empty();
             }
             
@@ -66,7 +66,7 @@ public class MatrixCalculator {
             String response = requestExecutor.apply(request);
 
             if (response == null) {
-                LOGGER.debug("Received null response from matrix API");
+                LOGGER.debug("矩阵 API 返回了 null 响应");
                 return Optional.empty();
             }
 
@@ -85,7 +85,7 @@ public class MatrixCalculator {
         payload.put(LOCATIONS_KEY, coordinates);
         payload.put("metrics", new String[] { "distance" });
 
-        HttpPost request = new HttpPost(baseUrl + "/v2/matrix/" + profile);
+        HttpPost request = new HttpPost(baseUrl + "/matrix/" + profile);
         headers.forEach(request::addHeader);
         request.setEntity(new StringEntity(mapper.writeValueAsString(payload), ContentType.APPLICATION_JSON));
         return request;
@@ -102,7 +102,7 @@ public class MatrixCalculator {
         payload.put(DESTINATIONS_KEY, destinations);
         payload.put("metrics", new String[] { "distance" });
 
-        HttpPost request = new HttpPost(baseUrl + "/v2/matrix/" + profile);
+        HttpPost request = new HttpPost(baseUrl + "/matrix/" + profile);
         headers.forEach(request::addHeader);
         request.setEntity(new StringEntity(mapper.writeValueAsString(payload), ContentType.APPLICATION_JSON));
         return request;

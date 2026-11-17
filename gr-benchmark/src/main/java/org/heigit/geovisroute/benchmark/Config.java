@@ -32,7 +32,7 @@ public class Config {
     private final List<Integer> ranges;
 
     public Config() {
-        this.baseUrl = getSystemProperty("base_url", "http://localhost:8082/ors");
+        this.baseUrl = getSystemProperty("base_url", "http://localhost:8082/gr");
         this.apiKey = getSystemProperty("api_key", "API KEY");
         this.targetProfile = getSystemProperty("profile", "driving-car");
         this.range = getSystemProperty("range", "300");
@@ -53,7 +53,7 @@ public class Config {
 
     private String getSystemProperty(String key, String defaultValue) {
         String value = System.getProperty(key) != null ? System.getProperty(key) : defaultValue;
-        logger.debug("Config property {} = {}", key, value);
+        logger.debug("配置项 {} = {}", key, value);
         return value;
     }
 

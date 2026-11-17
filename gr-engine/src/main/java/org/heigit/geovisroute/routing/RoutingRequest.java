@@ -530,10 +530,10 @@ public class RoutingRequest extends ServiceRequest {
                 resp = gh.route(req);
             }
             if (DebugUtility.isDebug() && !directedSegment) {
-                LOGGER.info("visited nodes: " + resp.getHints().getObject("visited_nodes.sum", null));
+                LOGGER.info("已访问节点数: " + resp.getHints().getObject("visited_nodes.sum", null));
             }
             if (DebugUtility.isDebug() && directedSegment) {
-                LOGGER.info("skipped segment: " + resp.getHints().getString("skipped_segment", null));
+                LOGGER.info("跳过的路段: " + resp.getHints().getString("skipped_segment", null));
             }
         } catch (Exception ex) {
             LOGGER.error(ex);

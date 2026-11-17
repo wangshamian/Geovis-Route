@@ -76,7 +76,7 @@ ENV ORS_HOME=${ORS_HOME}
 WORKDIR ${ORS_HOME}
 
 # Healthcheck
-HEALTHCHECK --interval=3s --timeout=2s CMD ["sh", "-c", "wget --quiet --tries=1 --spider http://localhost:8082/ors/v2/health || exit 1"]
+HEALTHCHECK --interval=3s --timeout=2s CMD ["sh", "-c", "wget --quiet --tries=1 --spider http://localhost:8082/gr/health || exit 1"]
 
 # Start the container
 ENTRYPOINT ["/entrypoint.sh"]

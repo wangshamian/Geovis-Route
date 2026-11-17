@@ -136,7 +136,7 @@ public class RealtimeFeed {
         final int[] boardEdges = findBoardEdgesForTrip(staticGtfs, feedKey, feed, tripUpdate.getTrip());
         final int[] leaveEdges = findAlightEdgesForTrip(staticGtfs, feedKey, feed, tripUpdate.getTrip());
         if (boardEdges == null || leaveEdges == null) {
-            logger.warn("Trip not found: {}", tripUpdate.getTrip());
+            logger.warn("未找到 trip: {}", tripUpdate.getTrip());
             return;
         }
         tripUpdate.getStopTimeUpdateList().stream()
@@ -149,7 +149,7 @@ public class RealtimeFeed {
         GtfsReader.TripWithStopTimes tripWithStopTimes = toTripWithStopTimes(feed, tripUpdate);
         tripWithStopTimes.stopTimes.forEach(stopTime -> {
             if (stopTime.stop_sequence > leaveEdges.length - 1) {
-                logger.warn("Stop sequence number too high {} vs {}", stopTime.stop_sequence, leaveEdges.length);
+                logger.warn("stop_sequence 序号过大 {} vs {}", stopTime.stop_sequence, leaveEdges.length);
                 return;
             }
             final StopTime originalStopTime = feed.stop_times.get(new Fun.Tuple2(tripUpdate.getTrip().getTripId(), stopTime.stop_sequence));
@@ -175,7 +175,7 @@ public class RealtimeFeed {
         } else if (tripUpdate.getTrip().hasRouteId() && feed.routes.containsKey(tripUpdate.getTrip().getRouteId())) {
             trip.route_id = tripUpdate.getTrip().getRouteId();
         } else {
-            logger.error("We need to know at least a valid route id for ADDED trip {}", trip.trip_id);
+            logger.error("ADDED trip {} 至少需要一个有效的 route id", trip.trip_id);
             return;
         }
         final List<StopTime> stopTimes = tripUpdate.getStopTimeUpdateList().stream()
@@ -192,7 +192,7 @@ public class RealtimeFeed {
                 })
                 .collect(Collectors.toList());
         if (stopTimes.stream().anyMatch(stopTime -> !feed.stops.containsKey(stopTime.stop_id))) {
-            logger.error("ADDED trip {} contains unknown stop id", trip.trip_id);
+            logger.error("ADDED trip {} 包含未知的 stop id", trip.trip_id);
             return;
         }
         GtfsReader.TripWithStopTimes tripWithStopTimes = new GtfsReader.TripWithStopTimes(trip, stopTimes, validOnDay, Collections.emptySet(), Collections.emptySet());
@@ -394,13 +394,13 @@ public class RealtimeFeed {
                 }
                 StopTime updatedPreviousStopTime = previousOriginalStopTime.clone();
                 updatedPreviousStopTime.arrival_time = Math.max(previousOriginalStopTime.arrival_time + delay, time);
-                logger.trace("stop_sequence {} scheduled arrival {} updated arrival {}", i, previousOriginalStopTime.arrival_time, updatedPreviousStopTime.arrival_time);
+                logger.trace("stop_sequence {} 计划到达 {} 更新后到达 {}", i, previousOriginalStopTime.arrival_time, updatedPreviousStopTime.arrival_time);
                 time = updatedPreviousStopTime.arrival_time;
                 updatedPreviousStopTime.departure_time = Math.max(previousOriginalStopTime.departure_time + delay, time);
-                logger.trace("stop_sequence {} scheduled departure {} updated departure {}", i, previousOriginalStopTime.departure_time, updatedPreviousStopTime.departure_time);
+                logger.trace("stop_sequence {} 计划出发 {} 更新后出发 {}", i, previousOriginalStopTime.departure_time, updatedPreviousStopTime.departure_time);
                 time = updatedPreviousStopTime.departure_time;
                 stopTimes.add(updatedPreviousStopTime);
-                logger.trace("Number of stop times: {}", stopTimes.size());
+                logger.trace("stop time 数量: {}", stopTimes.size());
             }
 
             final StopTime originalStopTime = feed.stop_times.get(new Fun.Tuple2(tripUpdate.getTrip().getTripId(), stopTimeUpdate.getStopSequence()));
@@ -413,16 +413,16 @@ public class RealtimeFeed {
                     delay = stopTimeUpdate.getArrival().getDelay();
                 }
                 updatedStopTime.arrival_time = Math.max(originalStopTime.arrival_time + delay, time);
-                logger.trace("stop_sequence {} scheduled arrival {} updated arrival {}", stopTimeUpdate.getStopSequence(), originalStopTime.arrival_time, updatedStopTime.arrival_time);
+                logger.trace("stop_sequence {} 计划到达 {} 更新后到达 {}", stopTimeUpdate.getStopSequence(), originalStopTime.arrival_time, updatedStopTime.arrival_time);
                 time = updatedStopTime.arrival_time;
                 if (stopTimeUpdate.hasDeparture()) {
                     delay = stopTimeUpdate.getDeparture().getDelay();
                 }
                 updatedStopTime.departure_time = Math.max(originalStopTime.departure_time + delay, time);
-                logger.trace("stop_sequence {} scheduled departure {} updated departure {}", stopTimeUpdate.getStopSequence(), originalStopTime.departure_time, updatedStopTime.departure_time);
+                logger.trace("stop_sequence {} 计划出发 {} 更新后出发 {}", stopTimeUpdate.getStopSequence(), originalStopTime.departure_time, updatedStopTime.departure_time);
                 time = updatedStopTime.departure_time;
                 stopTimes.add(updatedStopTime);
-                logger.trace("Number of stop times: {}", stopTimes.size());
+                logger.trace("stop time 数量: {}", stopTimes.size());
                 if (stopTimeUpdate.getScheduleRelationship() == SKIPPED) {
                     cancelledArrivals.add(stopTimeUpdate.getStopSequence());
                     cancelledDepartures.add(stopTimeUpdate.getStopSequence());
@@ -438,7 +438,7 @@ public class RealtimeFeed {
                 final ZonedDateTime departure_time = Instant.ofEpochSecond(stopTimeUpdate.getArrival().getTime()).atZone(timezone);
                 stopTime.departure_time = (int) Duration.between(departure_time.truncatedTo(ChronoUnit.DAYS), departure_time).getSeconds();
                 stopTimes.add(stopTime);
-                logger.trace("Number of stop times: {}", stopTimes.size());
+                logger.trace("stop time 数量: {}", stopTimes.size());
             } else {
                 // http://localhost:3000/route?point=45.51043713898763%2C-122.68381118774415&point=45.522104713562825%2C-122.6455307006836&weighting=fastest&pt.earliest_departure_time=2018-08-24T16%3A56%3A17Z&arrive_by=false&pt.max_walk_distance_per_leg=1000&pt.limit_solutions=5&locale=en-US&profile=pt&elevation=false&use_miles=false&points_encoded=false&pt.profile=true
                 // long query:
@@ -446,7 +446,7 @@ public class RealtimeFeed {
                 throw new RuntimeException();
             }
         }
-        logger.trace("Number of stop times: {}", stopTimes.size());
+        logger.trace("stop time 数量: {}", stopTimes.size());
         BitSet validOnDay = new BitSet(); // Not valid on any day. Just a template.
 
         return new GtfsReader.TripWithStopTimes(trip, stopTimes, validOnDay, cancelledArrivals, cancelledDepartures);

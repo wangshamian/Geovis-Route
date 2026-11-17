@@ -48,7 +48,7 @@ public class CoordinateGeneratorSnapping extends AbstractCoordinateGenerator {
             try (CloseableHttpClient client = createHttpClient()) {
                 return client.execute(request, this::processResponse);
             } catch (IOException e) {
-                LOGGER.error("Error executing request: {}", e.getMessage());
+                LOGGER.error("执行请求时出错：{}", e.getMessage());
                 return null;
             }
         };
@@ -74,7 +74,7 @@ public class CoordinateGeneratorSnapping extends AbstractCoordinateGenerator {
             generatePoints(pb, lastSizes, maxAttempts);
 
         } catch (Exception e) {
-            LOGGER.error("Error generating points", e);
+            LOGGER.error("生成坐标点时出错", e);
         }
     }
 
@@ -103,7 +103,7 @@ public class CoordinateGeneratorSnapping extends AbstractCoordinateGenerator {
 
         pb.stepTo(getTotalPoints());
         if (attempts >= maxAttempts && LOGGER.isWarnEnabled()) {
-            LOGGER.warn("Stopped point generation after {} attempts. Points per profile: {}",
+            LOGGER.warn("尝试 {} 次后停止生成坐标点。各 profile 的点数：{}",
                     maxAttempts, formatProgressMessage());
         }
     }
@@ -168,9 +168,9 @@ public class CoordinateGeneratorSnapping extends AbstractCoordinateGenerator {
             Point snappedPoint = new Point(point, profile);
             if (uniquePointsByProfile.get(profile).add(snappedPoint)) {
                 resultsByProfile.get(profile).add(point);
-                LOGGER.debug("Added snapped point: [{}, {}] for profile {}", point[0], point[1], profile);
+                LOGGER.debug("已添加吸附后的点：[{}, {}]，profile 为 {}", point[0], point[1], profile);
             } else {
-                LOGGER.debug("Skipped duplicate point: [{}, {}] for profile {}", point[0], point[1], profile);
+                LOGGER.debug("已跳过重复的点：[{}, {}]，profile 为 {}", point[0], point[1], profile);
             }
 
             if (uniquePointsByProfile.get(profile).size() >= numPoints) {

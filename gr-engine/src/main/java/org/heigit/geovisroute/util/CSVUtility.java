@@ -62,7 +62,7 @@ public class CSVUtility {
                 lines.add(parseLine(ln));
             }
         } catch (IOException ioe) {
-            LOGGER.error("Could not read from file: " + file);
+            LOGGER.error("无法从文件读取: " + file);
         }
 
         return lines;

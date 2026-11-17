@@ -170,8 +170,8 @@ public class BaseGraph implements Graph, Closeable {
         store.setLowShortcutWeightConsumer(s -> {
             // we just log these to find mapping errors
             NodeAccess nodeAccess = getNodeAccess();
-            LOGGER.warn("Setting weights smaller than " + s.minWeight + " is not allowed. " +
-                    "You passed: " + s.weight + " for the shortcut " +
+            LOGGER.warn("不允许设置小于 " + s.minWeight + " 的权重。" +
+                    "传入值为: " + s.weight + "，shortcut " +
                     " nodeA (" + nodeAccess.getLat(s.nodeA) + "," + nodeAccess.getLon(s.nodeA) +
                     " nodeB " + nodeAccess.getLat(s.nodeB) + "," + nodeAccess.getLon(s.nodeB));
         });

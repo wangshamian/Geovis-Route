@@ -8,9 +8,9 @@ server:
   error:
     whitelabel:
       enabled: false
-  # Keep the context-path at / else the war file run with tomcat will have the context-path of /ors/v2 as well.
+  # 服务统一挂载在 /gr 下，接口路径形如 http://localhost:8082/gr/directions/{profile}
   servlet:
-    context-path: /ors
+    context-path: /gr
   tomcat:
     keep-alive-timeout: 30000
 
@@ -38,10 +38,10 @@ springdoc:
       activated: true
     showExtensions: true
   api-docs:
-    path: /v2/api-docs
+    path: /api-docs
     version: OPENAPI_3_0
   packages-to-scan: org.heigit.geovisroute
-  pathsToMatch: /v2/**
+  pathsToMatch: /**
 
 ##### Logging settings #####
 logging:
@@ -62,13 +62,19 @@ ors:
     preflight_max_age: 600
   messages:
 
-  ##### OSM 底图瓦片本地缓存（测试页 /v2/tiles/osm/{z}/{x}/{y}.png 使用） #####
+  ##### OSM 底图瓦片本地缓存（测试页 /tiles/osm/{z}/{x}/{y}.png 使用） #####
   tiles:
     cache_path: ./tile-cache
     osm_upstream: https://tile.openstreetmap.org/{z}/{x}/{y}.png
     osm_max_zoom: 19
     # OSM 瓦片服务要求请求方提供可识别的 User-Agent
     user_agent: geovis-route-local-tile-cache/1.0
+
+  ##### 越野地表覆盖（ESA WorldCover），决定禁行区域与越野速度折减 #####
+  offroad:
+    # WorldCover 裁剪后的类别栅格与元数据，留空则不启用
+    worldcover_image: ./worldcover-taipei.png
+    worldcover_meta: ./worldcover-taipei.json
 
   ##### ORS endpoints settings #####
   endpoints:

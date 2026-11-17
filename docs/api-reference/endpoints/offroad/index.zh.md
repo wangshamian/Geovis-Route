@@ -6,7 +6,7 @@
 
 ::: tip 与 Directions 端点的区别
 
-| 维度 | Directions（`/v2/directions`） | 越野路径（`/v2/offroad`） |
+| 维度 | Directions（`/directions`） | 越野路径（`/offroad`） |
 | --- | --- | --- |
 | 依赖数据 | OSM 路网图 | SRTM 高程瓦片 |
 | 通行判定 | 道路等级、交通规则、路面属性 | 网格坡度是否超过阈值 |
@@ -21,7 +21,7 @@
 ### 1.1 调用接口
 
 ```bash
-curl -X POST http://localhost:8082/ors/v2/offroad \
+curl -X POST http://localhost:8082/gr/offroad \
   -H "Content-Type: application/json" \
   -d '{
     "coordinates": [[121.517089, 25.047764], [121.572668, 25.026994]],
@@ -35,7 +35,7 @@ curl -X POST http://localhost:8082/ors/v2/offroad \
 
 ### 1.2 使用演示页面
 
-访问 <http://localhost:8082/ors/ors-cesium-test.html>，切换到「越野路径」标签页：
+访问 <http://localhost:8082/gr/ors-cesium-test.html>，切换到「越野路径」标签页：
 
 1. 在地球上点击选择起点，再点击选择终点；选满两个点后自动计算。
 2. 页面会自动切换为「高德卫星影像」底图，便于判读地形。
@@ -122,7 +122,7 @@ h = (dx + dy) + (√2 − 2) × min(dx, dy)
 
 ### 3.1 请求
 
-`POST /v2/offroad`，`Content-Type: application/json`
+`POST /offroad`，`Content-Type: application/json`
 
 | 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
@@ -277,7 +277,7 @@ rows  = ceil((纬度跨度 × 111320 + 2h) / grid_interval)
 
 ## 5. 演示页面说明
 
-页面地址：`http://localhost:8082/ors/ors-cesium-test.html`，选择「越野路径」标签页。
+页面地址：`http://localhost:8082/gr/ors-cesium-test.html`，选择「越野路径」标签页。
 
 ### 5.1 控件
 

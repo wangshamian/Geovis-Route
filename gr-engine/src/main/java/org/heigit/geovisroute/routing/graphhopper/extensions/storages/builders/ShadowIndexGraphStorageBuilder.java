@@ -57,7 +57,7 @@ public class ShadowIndexGraphStorageBuilder extends AbstractGraphStorageBuilder 
         File expectedStorageFileLocation = Path.of(graphhopper.getGraphHopperLocation() + "/ext_shadowindex").toFile();
         if (!expectedStorageFileLocation.exists()) {
             String csvFile = parameters.getFilepath().toString();
-            LOGGER.info("Shadow Index File: " + csvFile);
+            LOGGER.info("Shadow Index 文件: " + csvFile);
             readShadowIndicesFromCSV(csvFile);
         }
         _storage = new ShadowIndexGraphStorage();
@@ -115,8 +115,8 @@ public class ShadowIndexGraphStorageBuilder extends AbstractGraphStorageBuilder 
             return (byte) no_data;
 
         if (shadow_index > max_level) {
-            LOGGER.warn("\nThe shadow index value of osm way, id = " + id + " is " + shadow_index
-                    + ", which is larger than than max level!");
+            LOGGER.warn("\nOSM way 的 shadow index 值, id = " + id + " 为 " + shadow_index
+                    + "，已超过最大级别！");
             return (byte) max_level;
         }
 

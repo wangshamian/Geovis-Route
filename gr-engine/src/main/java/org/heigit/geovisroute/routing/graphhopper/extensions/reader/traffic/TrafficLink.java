@@ -92,7 +92,7 @@ public class TrafficLink {
             isTeardrop = checkTearDrop(geometry);
             this.linkGeometry = geometry;
         } else {
-            LOGGER.error("Invalid geometry - " + linkGeometry.getGeometryType());
+            LOGGER.error("几何无效 - " + linkGeometry.getGeometryType());
             throw new InvalidObjectException("Invalid geometry for linkId " + linkId);
         }
     }

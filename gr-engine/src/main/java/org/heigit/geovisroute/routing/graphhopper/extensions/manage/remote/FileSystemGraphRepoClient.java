@@ -44,22 +44,22 @@ public class FileSystemGraphRepoClient extends AbstractGraphRepoClient implement
     @Override
     public void downloadGraphIfNecessary() {
         if (isNullOrEmpty(graphsRepoPath) || isNullOrEmpty(graphsRepoName) || isNullOrEmpty(graphsRepoCoverage) || isNullOrEmpty(graphsRepoGraphVersion)) {
-            LOGGER.debug("[%s] GRGraphManager is not configured - skipping check".formatted(getProfileDescriptiveName()));
+            LOGGER.debug("[%s] GRGraphManager 未配置 - 跳过检查".formatted(getProfileDescriptiveName()));
             return;
         }
         if (orsGraphFileManager.isBusy()) {
-            LOGGER.debug("[%s] GRGraphManager is busy - skipping check".formatted(getProfileDescriptiveName()));
+            LOGGER.debug("[%s] GRGraphManager 正忙 - 跳过检查".formatted(getProfileDescriptiveName()));
             return;
         }
 
-        LOGGER.debug("[%s] Checking for possible graph update from remote repository...".formatted(getProfileDescriptiveName()));
+        LOGGER.debug("[%s] 正在检查远程仓库中是否有可用的图更新...".formatted(getProfileDescriptiveName()));
         try {
             PersistedGraphBuildInfo previouslyDownloadedGraphBuildInfo = orsGraphFileManager.getDownloadedGraphBuildInfo();
             File downloadedCompressedGraphFile = orsGraphFileManager.getDownloadedCompressedGraphFile();
             GraphBuildInfo activeGraphBuildInfo = orsGraphFileManager.getActiveGraphBuildInfo();
             GraphBuildInfo downloadedExtractedGraphBuildInfo = orsGraphFileManager.getDownloadedExtractedGraphBuildInfo();
             GraphBuildInfo newlyDownloadedGraphBuildInfo = downloadLatestGraphBuildInfoFromRepository();
-            LOGGER.trace(("[%s] Comparing dates, downloading if first is after the others:%n" +
+            LOGGER.trace(("[%s] 正在比较日期，若第一项晚于其他项则下载:%n" +
                     "                         repo=%s%n" +
                     "              activeGraphBuildInfo=%s%n" +
                     " downloadedExtractedGraphBuildInfo=%s%n" +
@@ -74,7 +74,7 @@ public class FileSystemGraphRepoClient extends AbstractGraphRepoClient implement
                     getDateOrEpocStart(activeGraphBuildInfo),
                     getDateOrEpocStart(downloadedExtractedGraphBuildInfo),
                     getDateOrEpocStart(downloadedCompressedGraphFile, previouslyDownloadedGraphBuildInfo))) {
-                LOGGER.info("[%s] No newer graph found in repository.".formatted(getProfileDescriptiveName()));
+                LOGGER.info("[%s] 仓库中未找到更新的图数据。".formatted(getProfileDescriptiveName()));
                 return;
             }
 
@@ -84,22 +84,22 @@ public class FileSystemGraphRepoClient extends AbstractGraphRepoClient implement
 
             long end = System.currentTimeMillis();
             if (downloadedCompressedGraphFile.exists()) {
-                LOGGER.info("[%s] Download of compressed graph file finished after %d ms".formatted(getProfileDescriptiveName(), end - start));
+                LOGGER.info("[%s] 压缩图文件下载完成，耗时 %d ms".formatted(getProfileDescriptiveName(), end - start));
             } else {
-                LOGGER.error("[%s] Invalid download path for compressed graph file: %s".formatted(getProfileDescriptiveName(), latestCompressedGraphInRepoPath));
+                LOGGER.error("[%s] 压缩图文件的下载路径无效: %s".formatted(getProfileDescriptiveName(), latestCompressedGraphInRepoPath));
             }
         } catch (Exception e) {
-            LOGGER.error("[%s] Caught an exception during graph download check or graph download:".formatted(getProfileDescriptiveName()), e);
+            LOGGER.error("[%s] 在检查图下载或下载图数据时捕获到异常:".formatted(getProfileDescriptiveName()), e);
         }
     }
 
     GraphBuildInfo downloadLatestGraphBuildInfoFromRepository() throws GRGraphFileManagerException {
         GraphBuildInfo latestGraphBuildInfoInRepo = new GraphBuildInfo();
-        LOGGER.debug("[%s] Checking latest graphBuildInfo in remote repository...".formatted(getProfileDescriptiveName()));
+        LOGGER.debug("[%s] 正在检查远程仓库中最新的 graphBuildInfo...".formatted(getProfileDescriptiveName()));
 
         Path latestGraphBuildInfoInRepoPath = Path.of(graphsRepoPath, graphsRepoName, graphsProfileGroup, graphsRepoCoverage, graphsRepoGraphVersion, orsGraphRepoStrategy.getRepoGraphBuildInfoFileName());
         if (!latestGraphBuildInfoInRepoPath.toFile().exists()) {
-            LOGGER.info("[%s] No graphBuildInfo found in remote repository: %s".formatted(getProfileDescriptiveName(), latestGraphBuildInfoInRepoPath.toFile().getAbsolutePath()));
+            LOGGER.info("[%s] 远程仓库中未找到 graphBuildInfo: %s".formatted(getProfileDescriptiveName(), latestGraphBuildInfoInRepoPath.toFile().getAbsolutePath()));
             return latestGraphBuildInfoInRepo;
         }
 
@@ -114,7 +114,7 @@ public class FileSystemGraphRepoClient extends AbstractGraphRepoClient implement
             PersistedGraphBuildInfo persistedGraphBuildInfo = orsGraphFileManager.readOrsGraphBuildInfo(downloadedGraphBuildInfoFile);
             latestGraphBuildInfoInRepo.setPersistedGraphBuildInfo(persistedGraphBuildInfo);
         } else {
-            LOGGER.error("[%s] Invalid download path for graphBuildInfo file: %s".formatted(getProfileDescriptiveName(), latestGraphBuildInfoInRepoPath));
+            LOGGER.error("[%s] graphBuildInfo 文件的下载路径无效: %s".formatted(getProfileDescriptiveName(), latestGraphBuildInfoInRepoPath));
         }
 
         return latestGraphBuildInfoInRepo;
@@ -122,18 +122,18 @@ public class FileSystemGraphRepoClient extends AbstractGraphRepoClient implement
 
     public void downloadFile(Path repoPath, File localPath) {
         if (repoPath == null || localPath == null) {
-            LOGGER.warn("[%s] Invalid download or local path: %s or %s".formatted(getProfileDescriptiveName(), repoPath, localPath));
+            LOGGER.warn("[%s] 下载路径或本地路径无效: %s 或 %s".formatted(getProfileDescriptiveName(), repoPath, localPath));
             return;
         }
         if (LOGGER.isTraceEnabled()) {
-            LOGGER.trace("[%s] Downloading %s to local file %s...".formatted(getProfileDescriptiveName(), repoPath.toFile().getAbsolutePath(), localPath.getAbsolutePath()));
+            LOGGER.trace("[%s] 正在将 %s 下载到本地文件 %s...".formatted(getProfileDescriptiveName(), repoPath.toFile().getAbsolutePath(), localPath.getAbsolutePath()));
         } else {
-            LOGGER.info("[%s] Downloading %s...".formatted(getProfileDescriptiveName(), repoPath.toFile().getName()));
+            LOGGER.info("[%s] 正在下载 %s...".formatted(getProfileDescriptiveName(), repoPath.toFile().getName()));
         }
         try {
             Files.copy(repoPath, localPath.toPath(), StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
-            LOGGER.warn("[%s] Caught %s when trying to download %s".formatted(getProfileDescriptiveName(), e, repoPath.toFile().getAbsolutePath()));
+            LOGGER.warn("[%s] 捕获到 %s（下载 %s 时）".formatted(getProfileDescriptiveName(), e, repoPath.toFile().getAbsolutePath()));
             throw new IllegalArgumentException(e);
         }
     }

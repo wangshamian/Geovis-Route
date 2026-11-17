@@ -185,7 +185,7 @@ WantedBy=multi-user.target
 > sudo systemctl status openrouteservice.service
 ```
 
-访问 [http://localhost:8080/ors/v2/health](http://localhost:8080/ors/v2/health)，查看
+访问 [http://localhost:8080/gr/health](http://localhost:8080/gr/health)，查看
 openrouteservice 的状态。
 输出应如下所示：
 
@@ -286,11 +286,11 @@ export JAVA_OPTS="$JAVA_OPTS \
 现在 openrouteservice 已使用正确的配置搭建好，
 请检查 `/opt/openrouteservice/logs/ors.log` 目录中的日志文件，或 `/opt/tomcat/logs` 目录中的
 Tomcat 日志文件。
-在浏览器中访问 [http://localhost:8080/ors/v2/health](http://localhost:8080/ors/v2/health)，查看
+在浏览器中访问 [http://localhost:8080/gr/health](http://localhost:8080/gr/health)，查看
 openrouteservice 的状态，或向 API 发送请求。
 
 ```shell
-> curl http://localhost:8080/ors/v2/health
+> curl http://localhost:8080/gr/health
 ```
 
 输出应如下所示：
@@ -309,14 +309,14 @@ openrouteservice 的状态，或向 API 发送请求。
 ```shell
 # Teste eine Route von A nach B in Andorra
 > curl -X POST \
-  'http://localhost:8080/ors/v2/directions/driving-car' \
+  'http://localhost:8080/gr/directions/driving-car' \
   -H 'Content-Type: application/json; charset=utf-8' \
   -H 'Accept: application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8' \
   -d '{"coordinates":[[1.5036892890930176, 42.4972256361276],[1.6298711299896242, 42.57831077271361]]}'
 
 # Teste eine Isochrone von einem Punkt in Andorra
 > curl -X POST \
-  'http://localhost:8080/ors/v2/isochrones/driving-car' \
+  'http://localhost:8080/gr/isochrones/driving-car' \
   -H 'Content-Type: application/json; charset=utf-8' \
   -H 'Accept: application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8' \
   -d '{"locations":[[1.5036892890930176, 42.4972256361276]],"range":[300]}'

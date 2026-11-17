@@ -112,14 +112,14 @@ public class TripBasedRouter {
 
     private void iterate(List<EnqueuedTripSegment> queue) {
         round = 0;
-        logger.debug("Round {}: {}", round, queue.size());
+        logger.debug("第 {} 轮: {}", round, queue.size());
         reportQueue(queue);
         checkArrivals(queue, round);
         while (queue.size() != 0 && round < N_ROUNDS) {
             List<EnqueuedTripSegment> queue1 = enqueueTransfers(queue);
             queue = queue1;
             round = round + 1;
-            logger.debug("Round {}: {}", round, queue.size());
+            logger.debug("第 {} 轮: {}", round, queue.size());
             reportQueue(queue);
             checkArrivals(queue, round);
         }
@@ -132,7 +132,7 @@ public class TripBasedRouter {
         pairs.forEach(p -> {
                     EnqueuedTripSegment segment = p.first;
                     GTFSFeed.StopTimesForTripWithTripPatternKey trip = p.second;
-                    logger.debug(" pattern: {}   trip: {} {},   stops: [{}, {}]",
+                    logger.debug(" pattern: {}   trip: {} {},   站点: [{}, {}]",
                             trip.pattern.pattern_id,
                             p.first.tripPointer.trip.trip_id,
                             p.first.tripPointer.idx,
@@ -263,7 +263,7 @@ public class TripBasedRouter {
     }
 
     private void markAsDone(GTFSFeed.StopTimesForTripWithTripPatternKey destinationTripPointer, int doneFromIndex, int round) {
-        logger.debug("done: {} [{}", destinationTripPointer.idx, doneFromIndex);
+        logger.debug("完成: {} [{}", destinationTripPointer.idx, doneFromIndex);
         for (int r = round; r < N_ROUNDS + 1; r++) {
             for (int i = destinationTripPointer.idx; i < destinationTripPointer.endIdxOfPattern; i++) {
                 // Trips within a pattern are sorted by start time. All that come after me can be marked as done.

@@ -158,7 +158,7 @@ public class CoreLandmarkStorage extends LandmarkStorage {
             StopWatch sw = new StopWatch().start();
             blockedEdges = findBorderEdgeIds(areaIndex);
             if (logDetails)
-                logger.debug(configName() + "Made " + blockedEdges.size() + " edges inaccessible. Calculated country cut in " + sw.stop().getSeconds() + "s, " + Helper.getMemInfo());
+                logger.debug(configName() + "已将 " + blockedEdges.size() + " 条边设为不可访问。计算国界切分耗时 " + sw.stop().getSeconds() + "s, " + Helper.getMemInfo());
         } else {
             blockedEdges = new IntHashSet();
         }
@@ -170,7 +170,7 @@ public class CoreLandmarkStorage extends LandmarkStorage {
         TarjansCoreSCCAlgorithm tarjanAlgo = new TarjansCoreSCCAlgorithm(graph, core, accessFilter, false);
         List<IntArrayList> graphComponents = tarjanAlgo.findComponents();
         if (logDetails)
-            logger.debug(configName() + "Calculated " + graphComponents.size() + " subnetworks via tarjan in " + sw.stop().getSeconds() + "s, " + Helper.getMemInfo());
+            logger.debug(configName() + "已通过 tarjan 计算出 " + graphComponents.size() + " 个子网络，耗时 " + sw.stop().getSeconds() + "s, " + Helper.getMemInfo());
 
         createCoreNodeIdDA();
         String additionalInfo = "";
@@ -183,12 +183,12 @@ public class CoreLandmarkStorage extends LandmarkStorage {
             // 例如对德国来说至少 1500km 非常重要，否则速度至少慢一倍（例如对 1000km 而言）
             double maxWeight = estimateMaxWeight(graphComponents, accessFilter);
             setMaximumWeight(maxWeight);
-            additionalInfo = ", maxWeight:" + maxWeight + " from quick estimation";
+            additionalInfo = ", maxWeight:" + maxWeight + "（快速估算）";
         }
         double factor = getFactor();
 
         if (logDetails)
-            logger.debug(configName() + "init landmarks for subnetworks with node count greater than " + minimumNodes + " with factor:" + factor + additionalInfo);
+            logger.debug(configName() + "为节点数大于 " + minimumNodes + " 的子网络初始化地标，factor:" + factor + additionalInfo);
 
         int nodes = 0;
         for (IntArrayList subnetworkIds : graphComponents) {
@@ -206,15 +206,15 @@ public class CoreLandmarkStorage extends LandmarkStorage {
                 if (subnetworks[getIndex(nextStartNode)] == UNSET_SUBNETWORK) {
                     if (logDetails) {
                         GHPoint p = createPoint(graph, nextStartNode);
-                        logger.debug(configName() + "start node: " + nextStartNode + " (" + p + ") subnetwork " + index + ", subnetwork size: " + subnetworkIds.size()
-                                + ", " + Helper.getMemInfo() + ((areaIndex == null) ? "" : " area:" + areaIndex.query(p.lat, p.lon)));
+                        logger.debug(configName() + "起始节点: " + nextStartNode + " (" + p + ") 子网络 " + index + ", 子网络大小: " + subnetworkIds.size()
+                                + ", " + Helper.getMemInfo() + ((areaIndex == null) ? "" : " 区域:" + areaIndex.query(p.lat, p.lon)));
                     }
                     if (createLandmarksForSubnetwork(nextStartNode, subnetworks, accessFilter))
                         break;
                 }
             }
             if (index < 0)
-                logger.warn("next start node not found in big enough network of size " + subnetworkIds.size() + ", first element is " + subnetworkIds.get(0) + ", " + createPoint(graph, subnetworkIds.get(0)));
+                logger.warn("在大小足够的网络（大小 " + subnetworkIds.size() + "）中未找到下一个起始节点，首个元素为 " + subnetworkIds.get(0) + ", " + createPoint(graph, subnetworkIds.get(0)));
         }
 
         int subnetworkCount = landmarkIDs.size();
@@ -244,7 +244,7 @@ public class CoreLandmarkStorage extends LandmarkStorage {
         }
 
         if (logDetails)
-            logger.debug(configName() + "Finished landmark creation. Subnetwork node count sum " + nodes + " vs. nodes " + coreNodes);
+            logger.debug(configName() + "地标创建完成。子网络节点数合计 " + nodes + "，节点总数 " + coreNodes);
         setInitialized(true);
     }
 
@@ -388,8 +388,8 @@ public class CoreLandmarkStorage extends LandmarkStorage {
                 if (sn != subnetworkId) {
                     if (sn != UNSET_SUBNETWORK && sn != UNCLEAR_SUBNETWORK) {
                         // 这样写不好看，但在现实中可能发生，参见 testWithOnewaySubnetworks
-                        logger.error("subnetworkId for node " + nodeId
-                                + " (" + createPoint(graph.getBaseGraph(), nodeId) + ") already set (" + sn + "). " + "Cannot change to " + subnetworkId);
+                        logger.error("节点 " + nodeId
+                                + " (" + createPoint(graph.getBaseGraph(), nodeId) + ") 的 subnetworkId 已被设置 (" + sn + ")。" + "无法更改为 " + subnetworkId);
 
                         failed.set(true);
                         return false;
@@ -417,9 +417,9 @@ public class CoreLandmarkStorage extends LandmarkStorage {
             });
 
             if ((double) maxedout.get() / map.size() > 0.1) {
-                logger.warn("landmark " + lmIdx + " (" + nodeAccess.getLat(lmNodeId) + "," + nodeAccess.getLon(lmNodeId) + "): " +
-                        "too many weights were maxed out (" + maxedout.get() + "/" + map.size() + "). Use a bigger factor than " + getFactor()
-                        + ". For example use maximum_lm_weight: " + finalMaxWeight.getValue() * 1.2 + " in your LM profile definition");
+                logger.warn("地标 " + lmIdx + " (" + nodeAccess.getLat(lmNodeId) + "," + nodeAccess.getLon(lmNodeId) + "): " +
+                        "过多权重被截断为最大值 (" + maxedout.get() + "/" + map.size() + ")。请使用大于 " + getFactor()
+                        + " 的 factor。例如在 LM profile 定义中使用 maximum_lm_weight: " + finalMaxWeight.getValue() * 1.2);
             }
         }
     }

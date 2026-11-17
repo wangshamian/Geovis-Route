@@ -65,7 +65,7 @@ public class ConcaveBallsIsochroneMapBuilder extends AbstractIsochroneMapBuilder
         if (LOGGER.isDebugEnabled()) {
             sw.stop();
 
-            LOGGER.debug("Find edges: " + sw.getSeconds());
+            LOGGER.debug("查找边: " + sw.getSeconds());
         }
 
         if (edgeMap.isEmpty())
@@ -82,7 +82,7 @@ public class ConcaveBallsIsochroneMapBuilder extends AbstractIsochroneMapBuilder
 
         if (LOGGER.isDebugEnabled()) {
             sw.stop();
-            LOGGER.debug("Mark dead ends: " + sw.getSeconds());
+            LOGGER.debug("标记断头路: " + sw.getSeconds());
         }
 
         int nRanges = parameters.getRanges().length;
@@ -122,7 +122,7 @@ public class ConcaveBallsIsochroneMapBuilder extends AbstractIsochroneMapBuilder
 
             if (LOGGER.isDebugEnabled()) {
                 sw.stop();
-                LOGGER.debug(i + " Find points: " + sw.getSeconds() + " " + points.getNumPoints());
+                LOGGER.debug(i + " 查找点: " + sw.getSeconds() + " " + points.getNumPoints());
                 sw = new StopWatch();
                 sw.start();
             }
@@ -130,13 +130,13 @@ public class ConcaveBallsIsochroneMapBuilder extends AbstractIsochroneMapBuilder
             addIsochrone(isochroneMap, points, isoValue, meanRadius, smoothingDistance);
 
             if (LOGGER.isDebugEnabled())
-                LOGGER.debug("Build concave hull total: " + sw.stop().getSeconds());
+                LOGGER.debug("构建凹包总耗时: " + sw.stop().getSeconds());
 
             prevCost = isoValue;
         }
 
         if (LOGGER.isDebugEnabled())
-            LOGGER.debug("Total time: " + swTotal.stop().getSeconds());
+            LOGGER.debug("总耗时: " + swTotal.stop().getSeconds());
 
         return isochroneMap;
     }
@@ -236,7 +236,7 @@ public class ConcaveBallsIsochroneMapBuilder extends AbstractIsochroneMapBuilder
             }
         }
         if (LOGGER.isDebugEnabled())
-            LOGGER.debug("Expanding edges " + sw.getSeconds());
+            LOGGER.debug("扩展边 " + sw.getSeconds());
 
         Geometry[] geometries = new Geometry[points.size()];
 

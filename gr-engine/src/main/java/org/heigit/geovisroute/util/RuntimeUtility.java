@@ -22,7 +22,7 @@ public class RuntimeUtility {
     }
 
     public static void clearMemory(Logger logger) {
-        logger.info("====> Recycling garbage...");
+        logger.info("====> 回收内存垃圾...");
         printRAMInfo("Before: ", logger);
         Runtime.getRuntime().gc();
         printRAMInfo("After: ", logger);
@@ -30,9 +30,9 @@ public class RuntimeUtility {
     }
 
     public static void printRAMInfo(String hint, Logger logger) {
-        logger.info(hint + "Total - " + getMemorySize(Runtime.getRuntime().totalMemory()) + ", Free - "
-                + getMemorySize(Runtime.getRuntime().freeMemory()) + ", Max: " + getMemorySize(Runtime.getRuntime().maxMemory())
-                + ", Used - "
+        logger.info(hint + "总计 - " + getMemorySize(Runtime.getRuntime().totalMemory()) + "，空闲 - "
+                + getMemorySize(Runtime.getRuntime().freeMemory()) + "，最大: " + getMemorySize(Runtime.getRuntime().maxMemory())
+                + "，已用 - "
                 + getMemorySize(Runtime.getRuntime().totalMemory() - (Runtime.getRuntime().freeMemory())));
     }
 

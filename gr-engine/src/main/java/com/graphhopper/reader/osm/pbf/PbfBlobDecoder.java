@@ -350,7 +350,7 @@ public class PbfBlobDecoder implements Runnable {
                 processOsmPrimitives(readBlobContent());
 
             } else if (log.isDebugEnabled())
-                log.debug("Skipping unrecognised blob type " + blobType);
+                log.debug("跳过无法识别的 blob 类型 " + blobType);
         } catch (IOException e) {
             throw new RuntimeException("Unable to process PBF blob", e);
         }

@@ -118,14 +118,14 @@ public class GTFSFeed implements Cloneable, Closeable {
         // maybe we should just point to the feed object itself instead of its ID, and null out its stoptimes map after loading
         if (fid != null) {
             feedId = fid;
-            LOG.info("Feed ID is undefined, pester maintainers to include a feed ID. Using file name {}.", feedId); // TODO log an error, ideally feeds should include a feedID
+            LOG.info("未定义 feed ID，请提醒维护者补充 feed ID。将使用文件名 {}。", feedId); // TODO log an error, ideally feeds should include a feedID
         }
         else if (feedId == null || feedId.isEmpty()) {
             feedId = new File(zip.getName()).getName().replaceAll("\\.zip$", "");
-            LOG.info("Feed ID is undefined, pester maintainers to include a feed ID. Using file name {}.", feedId); // TODO log an error, ideally feeds should include a feedID
+            LOG.info("未定义 feed ID，请提醒维护者补充 feed ID。将使用文件名 {}。", feedId); // TODO log an error, ideally feeds should include a feedID
         }
         else {
-            LOG.info("Feed ID is '{}'.", feedId);
+            LOG.info("feed ID 为 '{}'。", feedId);
         }
 
         db.getAtomicString("feed_id").set(feedId);

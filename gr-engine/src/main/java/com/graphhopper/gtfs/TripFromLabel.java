@@ -280,7 +280,7 @@ class TripFromLabel {
         private Optional<Integer> getArrivalDelay(int stopSequence) {
             if (tripUpdate != null) {
                 int arrival_time = tripUpdate.stopTimes.stream().filter(st -> st.stop_sequence == stopSequence).findFirst().orElseThrow(() -> new RuntimeException("Stop time not found.")).arrival_time;
-                logger.trace("stop_sequence {} scheduled arrival {} updated arrival {}", stopSequence, stopTime.arrival_time, arrival_time);
+                logger.trace("stop_sequence {} 计划到达 {} 更新后到达 {}", stopSequence, stopTime.arrival_time, arrival_time);
                 return Optional.of(arrival_time - stopTime.arrival_time);
             } else {
                 return Optional.empty();
@@ -298,7 +298,7 @@ class TripFromLabel {
         private Optional<Integer> getDepartureDelay(int stopSequence) {
             if (tripUpdate != null) {
                 int departure_time = tripUpdate.stopTimes.stream().filter(st -> st.stop_sequence == stopSequence).findFirst().orElseThrow(() -> new RuntimeException("Stop time not found.")).departure_time;
-                logger.trace("stop_sequence {} scheduled departure {} updated departure {}", stopSequence, stopTime.departure_time, departure_time);
+                logger.trace("stop_sequence {} 计划出发 {} 更新后出发 {}", stopSequence, stopTime.departure_time, departure_time);
                 return Optional.of(departure_time - stopTime.departure_time);
             } else {
                 return Optional.empty();
@@ -328,9 +328,9 @@ class TripFromLabel {
             try {
                 Iterable<StopTime> interpolatedStopTimesForTrip = gtfsFeed.getInterpolatedStopTimesForTrip(tripUpdate.trip.trip_id);
                 long nStopTimes = StreamSupport.stream(interpolatedStopTimesForTrip.spliterator(), false).count();
-                logger.trace("Original stop times: {} Updated stop times: {}", nStopTimes, tripUpdate.stopTimes.size());
+                logger.trace("原始 stop time 数: {} 更新后 stop time 数: {}", nStopTimes, tripUpdate.stopTimes.size());
                 if (nStopTimes != tripUpdate.stopTimes.size()) {
-                    logger.error("Original stop times: {} Updated stop times: {}", nStopTimes, tripUpdate.stopTimes.size());
+                    logger.error("原始 stop time 数: {} 更新后 stop time 数: {}", nStopTimes, tripUpdate.stopTimes.size());
                 }
             } catch (GTFSFeed.FirstAndLastStopsDoNotHaveTimes firstAndLastStopsDoNotHaveTimes) {
                 throw new RuntimeException(firstAndLastStopsDoNotHaveTimes);

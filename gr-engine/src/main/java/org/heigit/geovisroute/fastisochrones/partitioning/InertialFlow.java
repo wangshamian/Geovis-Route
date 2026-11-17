@@ -67,8 +67,8 @@ public class InertialFlow implements Runnable {
         projector.setGraph(graph);
         setProjections(projector.calculateProjections());
 
-        LOGGER.info("Number of nodes: {}", graph.getNodes());
-        LOGGER.info("Number of edges: {}", graph.getAllEdges().length());
+        LOGGER.info("节点数: {}", graph.getNodes());
+        LOGGER.info("边数: {}", graph.getAllEdges().length());
     }
 
     private InertialFlow() {

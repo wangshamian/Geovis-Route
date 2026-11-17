@@ -40,7 +40,7 @@ public class GRGraphHopperConfig extends GraphHopperConfig {
      */
     public static ElevationProvider createElevationProvider(ElevationProperties elevationProps) {
         if (elevationProps == null || elevationProps.getProvider() == null || elevationProps.getCachePath() == null) {
-            LOGGER.warn("Elevation provider or cache path is null. Elevation deactivated.");
+            LOGGER.warn("高程数据提供方或缓存路径为空，已停用高程数据。");
             return ElevationProvider.NOOP;
         }
         GRGraphHopperConfig ghConfig = new GRGraphHopperConfig();
@@ -74,15 +74,15 @@ public class GRGraphHopperConfig extends GraphHopperConfig {
 
     
         if (!profile.getBuild().getElevation()) {
-            LOGGER.warn("Elevation is set to false.");
+            LOGGER.warn("高程功能已设为 false。");
             addElevation = false;
         }
         if (elevationProps.getProvider() == null) {
-            LOGGER.warn("Elevation provider is null.");
+            LOGGER.warn("高程数据提供方为空。");
             addElevation = false;
         }
         if (elevationProps.getCachePath() == null) {
-            LOGGER.warn("Elevation cache path is null.");
+            LOGGER.warn("高程数据缓存路径为空。");
             addElevation = false;
         }
         
@@ -92,7 +92,7 @@ public class GRGraphHopperConfig extends GraphHopperConfig {
         Set<String> encodedValues = new LinkedHashSet<>();
 
         if (!addElevation) {
-             LOGGER.warn("Elevation deactivated.");
+             LOGGER.warn("已停用高程数据。");
         } else {
             ghConfig.putObject("graph.elevation.provider", StringUtility.trimQuotes(elevationProps.getProvider()));
             ghConfig.putObject("graph.elevation.cache_dir", StringUtility.trimQuotes(elevationProps.getCachePath().toString()));
@@ -211,7 +211,7 @@ public class GRGraphHopperConfig extends GraphHopperConfig {
                             // CH 配置从未创建，因此注册 core profile 会使 GraphHopper 在后处理阶段
                             // 因 "No CH profiles found" 而失败。profile 本身保留，
                             // 因为路径计算仍在使用它们，仅跳过 core 预处理。
-                            LOGGER.warn("Core preparation is not supported by this GraphHopper version, skipping it.");
+                            LOGGER.warn("当前 GraphHopper 版本不支持 Core 预处理，将跳过该步骤。");
                         }
                         if (coreOpts.getLmsets() != null)
                             ghConfig.putObject("prepare.corelm.lmsets", StringUtility.trimQuotes(coreOpts.getLmsets()));

@@ -95,12 +95,12 @@ public class PrepareRoutingSubnetworks {
      */
     public int doWork() {
         if (minNetworkSize <= 0) {
-            logger.info("Skipping subnetwork search: prepare.min_network_size: " + minNetworkSize);
+            logger.info("跳过子网络搜索: prepare.min_network_size: " + minNetworkSize);
             return 0;
         }
         StopWatch sw = new StopWatch().start();
-        logger.info("Start marking subnetworks, prepare.min_network_size: " + minNetworkSize + ", threads: " + threads + ", nodes: " +
-                Helper.nf(graph.getNodes()) + ", edges: " + Helper.nf(graph.getEdges()) + ", jobs: " + prepareJobs + ", " + Helper.getMemInfo());
+        logger.info("开始标记子网络, prepare.min_network_size: " + minNetworkSize + ", 线程数: " + threads + ", 节点数: " +
+                Helper.nf(graph.getNodes()) + ", 边数: " + Helper.nf(graph.getEdges()) + ", 任务数: " + prepareJobs + ", " + Helper.getMemInfo());
         AtomicInteger total = new AtomicInteger(0);
         List<BitSet> flags = Stream.generate(() -> new BitSet(graph.getEdges())).limit(prepareJobs.size()).collect(Collectors.toList());
         Stream<Runnable> runnables = IntStream.range(0, prepareJobs.size()).mapToObj(i -> () -> {
@@ -115,7 +115,7 @@ public class PrepareRoutingSubnetworks {
                 iter.set(prepareJob.subnetworkEnc, flags.get(i).get(iter.getEdge()));
             }
         }
-        logger.info("Finished finding and marking subnetworks for " + prepareJobs.size() + " jobs, took: " + sw.stop().getSeconds() + "s, " + Helper.getMemInfo());
+        logger.info("已完成 " + prepareJobs.size() + " 个任务的子网络查找与标记，耗时: " + sw.stop().getSeconds() + " 秒, " + Helper.getMemInfo());
         return total.get();
     }
 
@@ -128,8 +128,8 @@ public class PrepareRoutingSubnetworks {
         List<IntArrayList> components = ccs.getComponents();
         BitSet singleEdgeComponents = ccs.getSingleEdgeComponents();
         long numSingleEdgeComponents = singleEdgeComponents.cardinality();
-        logger.info(jobName + " - Found " + ccs.getTotalComponents() + " subnetworks (" + numSingleEdgeComponents + " single edges and "
-                + components.size() + " components with more than one edge, total nodes: " + ccs.getEdgeKeys() + "), took: " + sw.stop().getSeconds() + "s");
+        logger.info(jobName + " - 找到 " + ccs.getTotalComponents() + " 个子网络（" + numSingleEdgeComponents + " 个单边组件和 "
+                + components.size() + " 个多边组件，节点总数: " + ccs.getEdgeKeys() + "），耗时: " + sw.stop().getSeconds() + " 秒");
 
         final int minNetworkSizeEdgeKeys = 2 * minNetworkSize;
 
@@ -170,9 +170,9 @@ public class PrepareRoutingSubnetworks {
             throw new IllegalStateException("Too many total (directed) edges were marked as subnetwork edges: " + markedEdges + " out of " + (2 * graph.getEdges()) + "\n" +
                     "The maximum number of subnetwork edges is: " + (2 * allowedMarked));
 
-        logger.info(jobName + " - Marked " + subnetworks + " subnetworks (biggest: " + biggestSubnetwork + " edges) -> " +
-                (ccs.getTotalComponents() - subnetworks) + " components(s) remain (smallest: " + smallestNonSubnetwork + ", biggest: " + ccs.getBiggestComponent().size() + " edges)"
-                + ", total marked edges: " + markedEdges + ", took: " + sw.stop().getSeconds() + "s");
+        logger.info(jobName + " - 已标记 " + subnetworks + " 个子网络（最大: " + biggestSubnetwork + " 条边）-> " +
+                (ccs.getTotalComponents() - subnetworks) + " 个组件保留（最小: " + smallestNonSubnetwork + ", 最大: " + ccs.getBiggestComponent().size() + " 条边）"
+                + ", 已标记边总数: " + markedEdges + ", 耗时: " + sw.stop().getSeconds() + " 秒");
         return markedEdges;
     }
 

@@ -58,7 +58,7 @@ public class RoutingProfileManager {
                 return;
             }
             int initializationThreads = config.getInitThreads();
-            LOGGER.info("====> Initializing %d profiles (%d threads) ...".formatted(profiles.size(), initializationThreads));
+            LOGGER.info("====> 正在初始化 %d 个配置（%d 个线程）...".formatted(profiles.size(), initializationThreads));
             RoutingProfileLoadContext loadContext = new RoutingProfileLoadContext();
             ExecutorService executor = Executors.newFixedThreadPool(initializationThreads);
             ExecutorCompletionService<RoutingProfile> compService = new ExecutorCompletionService<>(executor);
@@ -70,7 +70,7 @@ public class RoutingProfileManager {
                     nTotalTasks++;
                 }
             }
-            LOGGER.info("%d profile configurations submitted as tasks.".formatted(nTotalTasks));
+            LOGGER.info("已提交 %d 个配置任务。".formatted(nTotalTasks));
 
             int nCompletedTasks = 0;
             while (nCompletedTasks < nTotalTasks) {
@@ -95,7 +95,7 @@ public class RoutingProfileManager {
             executor.shutdown();
             loadContext.releaseElevationProviderCacheAfterAllVehicleProfilesHaveBeenProcessed();
 
-            LOGGER.info("Total time: " + TimeUtility.getElapsedTime(startTime, true) + ".");
+            LOGGER.info("总耗时: " + TimeUtility.getElapsedTime(startTime, true) + "。");
             LOGGER.info("========================================================================");
             RoutingProfileManagerStatus.setReady(true);
         } catch (ExecutionException ex) {
@@ -113,7 +113,7 @@ public class RoutingProfileManager {
     }
 
     private void printStatistics() {
-        LOGGER.info("====> Memory usage by profiles:");
+        LOGGER.info("====> 各配置的内存占用:");
         long totalUsedMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
         long totalProfilesMemory = 0;
 
@@ -124,7 +124,7 @@ public class RoutingProfileManager {
             totalProfilesMemory += profileMemory;
             LOGGER.info("[%d] %s (%.1f%%)".formatted(i, RuntimeUtility.getMemorySize(profileMemory), ((double) profileMemory / totalUsedMemory) * 100));
         }
-        LOGGER.info("Total: %s (%.1f%%)".formatted(RuntimeUtility.getMemorySize(totalProfilesMemory), ((double) totalProfilesMemory / totalUsedMemory) * 100));
+        LOGGER.info("总计: %s (%.1f%%)".formatted(RuntimeUtility.getMemorySize(totalProfilesMemory), ((double) totalProfilesMemory / totalUsedMemory) * 100));
         LOGGER.info("========================================================================");
     }
 

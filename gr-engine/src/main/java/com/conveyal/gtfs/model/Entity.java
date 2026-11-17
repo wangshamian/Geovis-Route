@@ -257,7 +257,7 @@ public abstract class Entity implements Serializable, Cloneable {
                     return;
                 }
                 zis = new FileInputStream(path.toFile());
-                LOG.info("Loading GTFS table {} from {}", tableName, path);
+                LOG.info("正在加载 GTFS 表 {}，来源 {}", tableName, path);
             } else {
                 ZipFile zip = new ZipFile(zipOrDirectory);
                 ZipEntry entry = zip.getEntry(tableName + ".txt");
@@ -275,7 +275,7 @@ public abstract class Entity implements Serializable, Cloneable {
                     if (entry == null) return;
                 }
                 zis = zip.getInputStream(entry);
-                LOG.info("Loading GTFS table {} from {}", tableName, entry);
+                LOG.info("正在加载 GTFS 表 {}，来源 {}", tableName, entry);
             }
             // skip any byte order mark that may be present. Files must be UTF-8,
             // but the GTFS spec says that "files that include the UTF byte order mark are acceptable"
@@ -286,7 +286,7 @@ public abstract class Entity implements Serializable, Cloneable {
             while (reader.readRecord()) {
                 // reader.getCurrentRecord() is zero-based and does not include the header line, keep our own row count
                 if (++row % 500000 == 0) {
-                    LOG.info("Record number {}", human(row));
+                    LOG.info("记录数 {}", human(row));
                 }
                 loadOneRow(); // Call subclass method to produce an entity from the current row.
             }
@@ -296,7 +296,7 @@ public abstract class Entity implements Serializable, Cloneable {
             if (this.isRequired()) {
                 feed.errors.add(new MissingTableError(tableName));
             } else {
-                LOG.info("Table {} was missing but it is not required.", tableName);
+                LOG.info("表 {} 缺失，但该表并非必需。", tableName);
             }
         }
     }
@@ -366,7 +366,7 @@ public abstract class Entity implements Serializable, Cloneable {
         protected abstract Iterator<E> iterator();
 
         public void writeTable (ZipOutputStream zip) throws IOException {
-            LOG.info("Writing GTFS table {}", tableName);
+            LOG.info("正在写入 GTFS 表 {}", tableName);
 
             ZipEntry zipEntry = new ZipEntry(tableName + ".txt");
             zip.putNextEntry(zipEntry);
@@ -382,7 +382,7 @@ public abstract class Entity implements Serializable, Cloneable {
             Iterator<E> iter = this.iterator();
             while (iter.hasNext()) {
                 if (++row % 500000 == 0) {
-                    LOG.info("Record number {}", human(row));
+                    LOG.info("记录数 {}", human(row));
                 }
 
                 writeOneRow(iter.next());
@@ -392,7 +392,7 @@ public abstract class Entity implements Serializable, Cloneable {
             writer.flush();
             zip.closeEntry();
 
-            LOG.info("Wrote {} rows", human(row));
+            LOG.info("已写入 {} 行", human(row));
         }
 
         protected void writeStringField(String str) throws IOException {

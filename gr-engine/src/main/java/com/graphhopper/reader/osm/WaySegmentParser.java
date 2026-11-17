@@ -89,27 +89,27 @@ public class WaySegmentParser {
         if (nodeData.getNodeCount() > 0)
             throw new IllegalStateException("You can only run way segment parser once");
 
-        LOGGER.info("Start reading OSM file: '" + osmFile + "'");
-        LOGGER.info("pass1 - start");
+        LOGGER.info("开始读取 OSM 文件: '" + osmFile + "'");
+        LOGGER.info("pass1 - 开始");
         StopWatch sw1 = StopWatch.started();
         readOSM(osmFile, new Pass1Handler(), new SkipOptions(true, false, false));
-        LOGGER.info("pass1 - finished, took: {}", sw1.stop().getTimeString());
+        LOGGER.info("pass1 - 完成，耗时: {}", sw1.stop().getTimeString());
 
         long nodes = nodeData.getNodeCount();
 
-        LOGGER.info("Creating graph. Node count (pillar+tower): " + nodes + ", " + Helper.getMemInfo());
+        LOGGER.info("正在创建图。节点数（pillar+tower）: " + nodes + ", " + Helper.getMemInfo());
 
-        LOGGER.info("pass2 - start");
+        LOGGER.info("pass2 - 开始");
         StopWatch sw2 = new StopWatch().start();
         readOSM(osmFile, new Pass2Handler(), SkipOptions.none());
-        LOGGER.info("pass2 - finished, took: {}", sw2.stop().getTimeString());
+        LOGGER.info("pass2 - 完成，耗时: {}", sw2.stop().getTimeString());
 
         nodeData.release();
 
-        LOGGER.info("Finished reading OSM file." +
-                " pass1: " + (int) sw1.getSeconds() + "s, " +
-                " pass2: " + (int) sw2.getSeconds() + "s, " +
-                " total: " + (int) (sw1.getSeconds() + sw2.getSeconds()) + "s");
+        LOGGER.info("完成 OSM 文件读取。" +
+                " pass1: " + (int) sw1.getSeconds() + " 秒, " +
+                " pass2: " + (int) sw2.getSeconds() + " 秒, " +
+                " 合计: " + (int) (sw1.getSeconds() + sw2.getSeconds()) + " 秒");
     }
 
     /**
@@ -129,15 +129,15 @@ public class WaySegmentParser {
         @Override
         public void handleWay(ReaderWay way) {
             if (!handledWays) {
-                LOGGER.info("pass1 - start reading OSM ways");
+                LOGGER.info("pass1 - 开始读取 OSM way");
                 handledWays = true;
             }
             if (handledRelations)
                 throw new IllegalStateException("OSM way elements must be located before relation elements in OSM file");
 
             if (++wayCounter % 10_000_000 == 0)
-                LOGGER.info("pass1 - processed ways: " + nf(wayCounter) + ", accepted ways: " + nf(acceptedWays) +
-                        ", way nodes: " + nf(nodeData.getNodeCount()) + ", " + Helper.getMemInfo());
+                LOGGER.info("pass1 - 已处理 way: " + nf(wayCounter) + ", 已接受 way: " + nf(acceptedWays) +
+                        ", way 节点: " + nf(nodeData.getNodeCount()) + ", " + Helper.getMemInfo());
 
             if (!wayFilter.test(way))
                 return;
@@ -156,12 +156,12 @@ public class WaySegmentParser {
         @Override
         public void handleRelation(ReaderRelation relation) {
             if (!handledRelations) {
-                LOGGER.info("pass1 - start reading OSM relations");
+                LOGGER.info("pass1 - 开始读取 OSM relation");
                 handledRelations = true;
             }
 
             if (++relationsCounter % 1_000_000 == 0)
-                LOGGER.info("pass1 - processed relations: " + nf(relationsCounter) + ", " + Helper.getMemInfo());
+                LOGGER.info("pass1 - 已处理 relation: " + nf(relationsCounter) + ", " + Helper.getMemInfo());
 
             relationPreprocessor.accept(relation);
         }
@@ -173,8 +173,8 @@ public class WaySegmentParser {
 
         @Override
         public void onFinish() {
-            LOGGER.info("pass1 - finished, processed ways: " + nf(wayCounter) + ", accepted ways: " +
-                    nf(acceptedWays) + ", way nodes: " + nf(nodeData.getNodeCount()) + ", relations: " +
+            LOGGER.info("pass1 - 完成，已处理 way: " + nf(wayCounter) + ", 已接受 way: " +
+                    nf(acceptedWays) + ", way 节点: " + nf(nodeData.getNodeCount()) + ", relation: " +
                     nf(relationsCounter) + ", " + Helper.getMemInfo());
         }
     }
@@ -191,7 +191,7 @@ public class WaySegmentParser {
         @Override
         public void handleNode(ReaderNode node) {
             if (!handledNodes) {
-                LOGGER.info("pass2 - start reading OSM nodes");
+                LOGGER.info("pass2 - 开始读取 OSM 节点");
                 handledNodes = true;
             }
             if (handledWays)
@@ -200,7 +200,7 @@ public class WaySegmentParser {
                 throw new IllegalStateException("OSM node elements must be located before relation elements in OSM file");
 
             if (++nodeCounter % 10_000_000 == 0)
-                LOGGER.info("pass2 - processed nodes: " + nf(nodeCounter) + ", accepted nodes: " + nf(acceptedNodes) +
+                LOGGER.info("pass2 - 已处理节点: " + nf(nodeCounter) + ", 已接受节点: " + nf(acceptedNodes) +
                         ", " + Helper.getMemInfo());
 
             long nodeType = nodeData.addCoordinatesIfMapped(node.getId(), node.getLat(), node.getLon(), () -> elevationProvider.applyAsDouble(node));
@@ -212,7 +212,7 @@ public class WaySegmentParser {
             // remember which nodes we want to split
             if (splitNodeFilter.test(node)) {
                 if (nodeType == JUNCTION_NODE) {
-                    LOGGER.debug("OSM node {} at {},{} is a barrier node at a junction. The barrier will be ignored",
+                    LOGGER.debug("OSM 节点 {} 位于 {},{}，是交叉口处的障碍节点，该障碍将被忽略",
                             node.getId(), Helper.round(node.getLat(), 7), Helper.round(node.getLon(), 7));
                     ignoredSplitNodes++;
                 } else
@@ -235,14 +235,14 @@ public class WaySegmentParser {
         @Override
         public void handleWay(ReaderWay way) {
             if (!handledWays) {
-                LOGGER.info("pass2 - start reading OSM ways");
+                LOGGER.info("pass2 - 开始读取 OSM way");
                 handledWays = true;
             }
             if (handledRelations)
                 throw new IllegalStateException("OSM way elements must be located before relation elements in OSM file");
 
             if (++wayCounter % 10_000_000 == 0)
-                LOGGER.info("pass2 - processed ways: " + nf(wayCounter) + ", " + Helper.getMemInfo());
+                LOGGER.info("pass2 - 已处理 way: " + nf(wayCounter) + ", " + Helper.getMemInfo());
 
             if (!wayFilter.test(way))
                 return;
@@ -287,7 +287,7 @@ public class WaySegmentParser {
 
             boolean isLoop = segment.get(0).osmNodeId == segment.get(segment.size() - 1).osmNodeId;
             if (segment.size() == 2 && isLoop) {
-                LOGGER.warn("Loop in OSM way: {}, will be ignored, duplicate node: {}", way.getId(), segment.get(0).osmNodeId);
+                LOGGER.warn("OSM way 存在环路: {}，将被忽略，重复节点: {}", way.getId(), segment.get(0).osmNodeId);
             } else if (isLoop) {
                 // split into two segments
                 splitSegmentAtSplitNodes(segment.subList(0, segment.size() - 1), way);
@@ -370,7 +370,7 @@ public class WaySegmentParser {
         @Override
         public void handleRelation(ReaderRelation relation) {
             if (!handledRelations) {
-                LOGGER.info("pass2 - start reading OSM relations");
+                LOGGER.info("pass2 - 开始读取 OSM relation");
                 handledRelations = true;
             }
 
@@ -379,7 +379,7 @@ public class WaySegmentParser {
 
         @Override
         public void onFinish() {
-            LOGGER.info("pass2 - finished, processed ways: {}, way nodes: {}, nodes with tags: {}, node tag capacity: {}, ignored barriers at junctions: {}",
+            LOGGER.info("pass2 - 完成，已处理 way: {}, way 节点: {}, 带标签的节点: {}, 节点标签容量: {}, 交叉口处忽略的障碍: {}",
                     nf(wayCounter), nf(acceptedNodes), nf(nodeData.getTaggedNodeCount()), nf(nodeData.getNodeTagCapacity()), nf(ignoredSplitNodes));
         }
 

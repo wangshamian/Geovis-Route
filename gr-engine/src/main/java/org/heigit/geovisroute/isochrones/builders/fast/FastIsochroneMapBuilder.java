@@ -154,7 +154,7 @@ public class FastIsochroneMapBuilder extends AbstractIsochroneMapBuilder {
             Set<Geometry> isochroneGeometries = new HashSet<>();
 
             if (DebugUtility.isDebug()) {
-                LOGGER.debug("Find edges: " + sw.stop().getSeconds());
+                LOGGER.debug("查找边: " + sw.stop().getSeconds());
                 sw = new StopWatch();
                 sw.start();
             }
@@ -162,7 +162,7 @@ public class FastIsochroneMapBuilder extends AbstractIsochroneMapBuilder {
             fastIsochroneAlgorithm.approximateActiveCells(ACTIVE_CELL_APPROXIMATION_FACTOR);
 
             if (DebugUtility.isDebug()) {
-                LOGGER.debug("Approximate active cells: " + sw.stop().getSeconds());
+                LOGGER.debug("近似活动单元: " + sw.stop().getSeconds());
                 sw = new StopWatch();
                 sw.start();
             }
@@ -170,7 +170,7 @@ public class FastIsochroneMapBuilder extends AbstractIsochroneMapBuilder {
             handleFullyReachableCells(isochroneGeometries, fastIsochroneAlgorithm.getFullyReachableCells());
 
             if (DebugUtility.isDebug()) {
-                LOGGER.debug("Handle " + fastIsochroneAlgorithm.getFullyReachableCells().size() + " fully reachable cells: " + sw.stop().getSeconds());
+                LOGGER.debug("处理 " + fastIsochroneAlgorithm.getFullyReachableCells().size() + " 个完全可达单元: " + sw.stop().getSeconds());
             }
 
             GHPoint3D snappedPosition = res.getSnappedPoint();
@@ -220,13 +220,13 @@ public class FastIsochroneMapBuilder extends AbstractIsochroneMapBuilder {
                 GeometryCollection points = buildIsochrone(new AccessibilityMap(new GHIntObjectHashMap<>(0), snappedPosition), isoPoints, isoValue, smoothingDistance);
                 addIsochrone(isochroneMap, points, isoValue, meanRadius, smoothingDistance);
                 if (DebugUtility.isDebug()) {
-                    LOGGER.debug("Build final concave hull from " + points.getNumGeometries() + " points: " + finalConcaveHullStopWatch.stop().getSeconds());
+                    LOGGER.debug("根据 " + points.getNumGeometries() + " 个点构建最终凹包: " + finalConcaveHullStopWatch.stop().getSeconds());
                 }
             }
         }
 
         if (DebugUtility.isDebug())
-            LOGGER.debug("Total time: " + swTotal.stop().getSeconds());
+            LOGGER.debug("总耗时: " + swTotal.stop().getSeconds());
 
         return isochroneMap;
     }
@@ -262,8 +262,8 @@ public class FastIsochroneMapBuilder extends AbstractIsochroneMapBuilder {
             swActiveCellBuild.stop();
         }
         if (DebugUtility.isDebug()) {
-            LOGGER.debug("Separate disconnected: " + swActiveCellSeparate.stop().getSeconds());
-            LOGGER.debug("Build " + fastIsochroneAlgorithm.getActiveCellMaps().size() + " active cells: " + swActiveCellBuild.stop().getSeconds());
+            LOGGER.debug("分离不连通部分: " + swActiveCellSeparate.stop().getSeconds());
+            LOGGER.debug("构建 " + fastIsochroneAlgorithm.getActiveCellMaps().size() + " 个活动单元: " + swActiveCellBuild.stop().getSeconds());
         }
     }
 
@@ -303,7 +303,7 @@ public class FastIsochroneMapBuilder extends AbstractIsochroneMapBuilder {
             unaryUnionStopWatch.start();
         Geometry preprocessedGeometry = UnaryUnionOp.union(isochroneGeometries);
         if (DebugUtility.isDebug()) {
-            LOGGER.debug("Union of geometries: " + unaryUnionStopWatch.stop().getSeconds());
+            LOGGER.debug("几何合并: " + unaryUnionStopWatch.stop().getSeconds());
         }
         return preprocessedGeometry;
     }
@@ -440,7 +440,7 @@ public class FastIsochroneMapBuilder extends AbstractIsochroneMapBuilder {
         if (polygon.isValid() && !polygon.isEmpty()) {
             isochronePolygons.add(polygon);
         } else
-            LOGGER.debug("Poly of cell " + cellId + " is invalid at size " + cArray.length);
+            LOGGER.debug("单元 " + cellId + " 的多边形无效，size 为 " + cArray.length);
     }
 
     //调试

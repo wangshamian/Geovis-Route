@@ -136,7 +136,7 @@ public class BordersGraphStorageBuilder extends AbstractGraphStorageBuilder {
 
     @Override
     public void processWay(ReaderWay way) {
-        LOGGER.warn("Borders requires geometry for the way!");
+        LOGGER.warn("国界功能需要包含几何数据的 way！");
     }
 
     /**

@@ -47,7 +47,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @Tag(name = "Matrix Service", description = "获取时间与距离的一对多、多对一和多对多矩阵")
-@RequestMapping("/v2/matrix")
+@RequestMapping("/matrix")
 @ApiResponse(responseCode = "400", description = "请求不正确，因此无法处理。")
 @ApiResponse(responseCode = "404", description = "无法找到某个元素。如有可能，会提供更详细的错误码。")
 @ApiResponse(responseCode = "405", description = "不支持指定的 HTTP 方法。更多细节请参阅端点文档。")

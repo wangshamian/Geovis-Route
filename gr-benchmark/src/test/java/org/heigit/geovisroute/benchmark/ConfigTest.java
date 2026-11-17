@@ -29,7 +29,7 @@ class ConfigTest {
 
     @Test
     void testDefaultValues() {
-        assertEquals("http://localhost:8082/ors", config.getBaseUrl());
+        assertEquals("http://localhost:8082/gr", config.getBaseUrl());
         assertEquals("API KEY", config.getApiKey());
         assertEquals("driving-car", config.getTargetProfile());
         assertEquals("300", config.getRange());

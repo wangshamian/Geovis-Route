@@ -81,7 +81,7 @@ public class PrepareCore extends PrepareContractionHierarchies {
                 throw new IllegalArgumentException("For edge-based CH you need a turn cost storage");
             }
         }
-        logger.info("Creating Core graph, {}", getMemInfo());
+        logger.info("正在创建 Core 图, {}", getMemInfo());
         prepareGraph = CorePreparationGraph.nodeBased(graph.getNodes(), graph.getEdges());
         nodeContractor = new CoreNodeContractor(prepareGraph, chBuilder, pMap);
         maxLevel = nodes;
@@ -89,11 +89,11 @@ public class PrepareCore extends PrepareContractionHierarchies {
         // TreeMap 内存效率不高，而 PriorityQueue 不支持高效的更新方法
         //（而且内存效率也不高）
         sortedNodes = new MinHeapWithUpdate(prepareGraph.getNodes());
-        logger.info("Building Core graph, {}", getMemInfo());
+        logger.info("正在构建 Core 图, {}", getMemInfo());
         StopWatch sw = new StopWatch().start();
         Weighting weighting = new RestrictedEdgesWeighting(chConfig.getWeighting(), restrictionFilter);
         buildFromGraph(prepareGraph, graph, weighting);
-        logger.info("Finished building Core graph, took: {}s, {}", sw.stop().getSeconds(), getMemInfo());
+        logger.info("Core 图构建完成，耗时: {}s, {}", sw.stop().getSeconds(), getMemInfo());
         nodeContractor.initFromGraph();
         postInit(prepareGraph);
     }

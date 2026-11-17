@@ -79,13 +79,13 @@ docker compose down
 
 上述端点将在 8080 端口上可用：
 
-- `http://localhost:8080/ors/v2/directions`
-- `http://localhost:8080/ors/v2/isochrones`
-- `http://localhost:8080/ors/v2/matrix`
-- `http://localhost:8080/ors/v2/snap`
-- `http://localhost:8080/ors/v2/export`
-- `http://localhost:8080/ors/v2/health`
-- `http://localhost:8080/ors/v2/status`
+- `http://localhost:8080/gr/directions`
+- `http://localhost:8080/gr/isochrones`
+- `http://localhost:8080/gr/matrix`
+- `http://localhost:8080/gr/snap`
+- `http://localhost:8080/gr/export`
+- `http://localhost:8080/gr/health`
+- `http://localhost:8080/gr/status`
 
 更多信息可在上面链接的端点文档页面中找到。
 

@@ -28,7 +28,7 @@
 默认情况下，可以通过[健康检查端点](/api-reference/endpoints/health/index.md)查询服务状态。
 
 ```shell 
-curl 'http://localhost:8080/ors/v2/health'
+curl 'http://localhost:8080/gr/health'
 # should result in an output like 
 # {"status":"ready"}
 ```
@@ -36,7 +36,7 @@ curl 'http://localhost:8080/ors/v2/health'
 当服务就绪后，你可以请求[状态端点](/api-reference/endpoints/status/index.md)，获取正在运行的服务的进一步信息。
 
 ```shell 
-curl 'http://localhost:8080/ors/v2/status'
+curl 'http://localhost:8080/gr/status'
 # should result in an output like 
 # {"languages":["cs","cs-cz","de","de-de","en","en-us","eo","eo-eo","es","es-es","fr","fr-fr","gr","gr-gr","he","he-il","hu","hu-hu","id","id-id","it","it-it","ja","ja-jp","ne","ne-np","nl","nl-nl","pl","pl-pl","pt","pt-pt","ro","ro-ro","ru","ru-ru","tr","tr-tr","zh","zh-cn"],"engine":{"build_date":"2024-01-02T16:34:45Z","version":"8.0"},"profiles":{"profile 1":{"storages":{"WayCategory":{"gh_profile":"car_ors_fastest_with_turn_costs"},"HeavyVehicle":{"gh_profile":"car_ors_fastest_with_turn_costs"},"WaySurfaceType":{"gh_profile":"car_ors_fastest_with_turn_costs"},"RoadAccessRestrictions":{"gh_profile":"car_ors_fastest_with_turn_costs","use_for_warnings":"true"}},"profiles":"driving-car","creation_date":"","limits":{"maximum_distance":100000,"maximum_waypoints":50,"maximum_distance_dynamic_weights":100000,"maximum_distance_avoid_areas":100000}}},"services":["routing","isochrones","matrix","snap"]}
 ```
@@ -44,7 +44,7 @@ curl 'http://localhost:8080/ors/v2/status'
 如果你使用默认数据集，就可以向海德堡（Heidelberg）的汽车配置发送如下所示的路由请求。
 
 ```shell 
-curl 'http://localhost:8080/ors/v2/directions/driving-car?start=8.681495,49.41461&end=8.687872,49.420318'
+curl 'http://localhost:8080/gr/directions/driving-car?start=8.681495,49.41461&end=8.687872,49.420318'
 ```
 
 

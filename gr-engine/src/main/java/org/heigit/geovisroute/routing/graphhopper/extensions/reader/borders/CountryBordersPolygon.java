@@ -46,7 +46,7 @@ public class CountryBordersPolygon implements Serializable {
         else if (boundary.getGeometryType().equals("MultiPolygon"))
             this.boundary = (MultiPolygon) boundary;
         else {
-            LOGGER.error("Invalid geometry - " + boundary.getGeometryType());
+            LOGGER.error("几何无效 - " + boundary.getGeometryType());
             throw new InvalidObjectException("Invalid geometry for boundary " + name);
         }
         this.boundaryLine = boundary.getBoundary();

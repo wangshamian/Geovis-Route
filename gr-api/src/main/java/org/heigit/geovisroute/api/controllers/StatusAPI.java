@@ -43,7 +43,7 @@ import java.util.List;
 
 @RestController
 @Tag(name = "Status service", description = "获取 API 的状态信息")
-@RequestMapping("/v2/status")
+@RequestMapping("/status")
 public class StatusAPI {
 
     private final EndpointsProperties endpointsProperties;

@@ -236,7 +236,7 @@ public class OSMReader {
         releaseEverythingExceptRestrictionData();
         addRestrictionsToGraph();
         releaseRestrictionData();
-        LOGGER.info("Finished reading OSM file: {}, nodes: {}, edges: {}, zero distance edges: {}",
+        LOGGER.info("OSM 文件读取完成: {}, 节点: {}, 边: {}, 零距离边: {}",
                 osmFile.getAbsolutePath(), nf(baseGraph.getNodes()), nf(baseGraph.getEdges()), nf(zeroCounter));
     }
 
@@ -427,7 +427,7 @@ public class OSMReader {
 
         double maxDistance = (Integer.MAX_VALUE - 1) / 1000d;
         if (Double.isNaN(distance)) {
-            LOGGER.warn("Bug in OSM or GraphHopper (" + bugCounter++ + "). Illegal tower node distance " + distance + " reset to 1m, osm way " + way.getId());
+            LOGGER.warn("OSM 或 GraphHopper 存在 bug（" + bugCounter++ + "）。非法的 tower 节点距离 " + distance + " 已重置为 1m，OSM way " + way.getId());
             distance = 1;
         }
 
@@ -435,7 +435,7 @@ public class OSMReader {
             // Too large is very rare and often the wrong tagging. See #435
             // so we can avoid the complexity of splitting the way for now (new towernodes would be required, splitting up geometry etc)
             // For example this happens here: https://www.openstreetmap.org/way/672506453 (Cape Town - Tristan da Cunha ferry)
-            LOGGER.warn("Bug in OSM or GraphHopper (" + bugCounter++ + "). Too big tower node distance " + distance + " reset to large value, osm way " + way.getId());
+            LOGGER.warn("OSM 或 GraphHopper 存在 bug（" + bugCounter++ + "）。tower 节点距离过大 " + distance + " 已重置为较大值，OSM way " + way.getId());
             distance = maxDistance;
         }
 
@@ -476,7 +476,7 @@ public class OSMReader {
         if (Double.isInfinite(edgeDistance))
             throw new IllegalStateException("Infinite edge distance should never occur, as we are supposed to limit each distance to the maximum distance we can store, #435");
         else if (edgeDistance > 2_000_000)
-            LOGGER.warn("Very long edge detected: " + edge + " dist: " + edgeDistance);
+            LOGGER.warn("检测到超长边: " + edge + " 距离: " + edgeDistance);
         else if (Math.abs(edgeDistance - geometryDistance) > tolerance)
             throw new IllegalStateException("Suspicious distance for edge: " + edge + " " + edgeDistance + " vs. " + geometryDistance
                     + ", difference: " + (edgeDistance - geometryDistance));
@@ -563,7 +563,7 @@ public class OSMReader {
         if (Double.isNaN(distance)) {
             // Some nodes were missing, and we cannot determine the distance. This can happen when ways are only
             // included partially in an OSM extract. In this case we cannot calculate the speed either, so we return.
-            LOGGER.warn("Could not determine distance for OSM way: " + way.getId());
+            LOGGER.warn("无法确定 OSM way 的距离: " + way.getId());
             return;
         }
         way.setTag("way_distance", distance);
@@ -575,14 +575,14 @@ public class OSMReader {
         if (durationTag == null) {
             // no duration tag -> we cannot derive speed. happens very frequently for short ferries, but also for some long ones, see: #2532
             if (isFerry(way) && distance > 500_000)
-                OSM_WARNING_LOGGER.warn("Long ferry OSM way without duration tag: " + way.getId() + ", distance: " + Math.round(distance / 1000.0) + " km");
+                OSM_WARNING_LOGGER.warn("长途轮渡 OSM way 缺少 duration 标签: " + way.getId() + ", 距离: " + Math.round(distance / 1000.0) + " km");
             return;
         }
         long durationInSeconds;
         try {
             durationInSeconds = OSMReaderUtility.parseDuration(durationTag);
         } catch (Exception e) {
-            OSM_WARNING_LOGGER.warn("Could not parse duration tag '" + durationTag + "' in OSM way: " + way.getId());
+            OSM_WARNING_LOGGER.warn("无法解析 OSM way 中的 duration 标签 '" + durationTag + "': " + way.getId());
             return;
         }
 
@@ -590,9 +590,9 @@ public class OSMReader {
         if (speedInKmPerHour < 0.1d) {
             // Often there are mapping errors like duration=30:00 (30h) instead of duration=00:30 (30min). In this case we
             // ignore the duration tag. If no such cases show up anymore, because they were fixed, maybe raise the limit to find some more.
-            OSM_WARNING_LOGGER.warn("Unrealistic low speed calculated from duration. Maybe the duration is too long, or it is applied to a way that only represents a part of the connection? OSM way: "
+            OSM_WARNING_LOGGER.warn("由 duration 计算出的速度过低，不符合实际。可能是 duration 过长，或被用于仅代表该连接一部分的 way？OSM way: "
                     + way.getId() + ". duration=" + durationTag + " (= " + Math.round(durationInSeconds / 60.0) +
-                    " minutes), distance=" + distance + " m");
+                    " 分钟), distance=" + distance + " m");
             return;
         }
         // tag will be present if 1) isCalculateWayDistance was true for this way, 2) no OSM nodes were missing
@@ -720,7 +720,7 @@ public class OSMReader {
             }
         }
         restrictionSetter.setRestrictions(restrictions, encBits);
-        LOGGER.info("Finished adding turn restrictions. total turn cost entries: {}, took: {}",
+        LOGGER.info("转向限制添加完成。转向成本条目总数: {}, 耗时: {}",
                 Helper.nf(baseGraph.getTurnCostStorage().getTurnCostsCount()), sw.stop().getTimeString());
     }
 
@@ -729,7 +729,7 @@ public class OSMReader {
         if (!e.isWithoutWarning()) {
             restrictionRelation.getTags().remove("graphhopper:via_node");
             List<String> members = restrictionRelation.getMembers().stream().map(m -> m.getRole() + " " + m.getType().toString().toLowerCase() + " " + m.getRef()).collect(Collectors.toList());
-            OSM_WARNING_LOGGER.warn("Restriction relation " + restrictionRelation.getId() + " " + e.getMessage() + ". tags: " + restrictionRelation.getTags() + ", members: " + members + ". Relation ignored.");
+            OSM_WARNING_LOGGER.warn("限制 relation " + restrictionRelation.getId() + " " + e.getMessage() + "。tags: " + restrictionRelation.getTags() + ", members: " + members + "。该 relation 已被忽略。");
         }
     }
 

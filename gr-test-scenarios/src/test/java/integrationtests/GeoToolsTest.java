@@ -35,7 +35,7 @@ public class GeoToolsTest extends ContainerInitializer {
             else geoToolsPath = "/tmp/GeoTools";
 
             OrsContainerFileSystemCheck.assertDirectoryExists(container, geoToolsPath, false);
-            checkAvoidAreaRequest("http://" + container.getHost() + ":" + container.getFirstMappedPort() + "/ors/v2/directions/driving-car/geojson", 200);
+            checkAvoidAreaRequest("http://" + container.getHost() + ":" + container.getFirstMappedPort() + "/gr/directions/driving-car/geojson", 200);
             OrsContainerFileSystemCheck.assertDirectoryExists(container, geoToolsPath, true);
             container.stop();
         }

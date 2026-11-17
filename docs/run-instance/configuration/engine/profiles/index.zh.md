@@ -7,7 +7,7 @@ openrouteservice 可以同时运行多个不同的配置，
 
 每个配置都有一个**配置名称**（即该映射中的键），
 它被用作 API 中的_路径参数_
-（配置 `truck` 的 directions 请求：`http://.../ors/v2/directions/truck/json`），
+（配置 `truck` 的 directions 请求：`http://.../gr/directions/truck/json`），
 同时也作为该配置路由图的_目录名_。
 注意，配置名称可以自由选择，
 但不能包含你的操作系统上不能用于目录名的特殊字符。

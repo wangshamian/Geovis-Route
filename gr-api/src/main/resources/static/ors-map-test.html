@@ -40,7 +40,7 @@
   <h1>ORS 本地地图测试</h1>
   <div class="row">
     <label>服务地址</label>
-    <input type="text" id="base" value="http://localhost:8082/ors" />
+    <input type="text" id="base" value="http://localhost:8082/gr" />
   </div>
   <div class="row">
     <label>profile</label>
@@ -219,7 +219,7 @@ async function computeRoute() {
   loadingEl.style.display = 'inline';
   resetRoute();
   try {
-    const resp = await fetch(`${base}/v2/directions/${encodeURIComponent(profile)}`, {
+    const resp = await fetch(`${base}/directions/${encodeURIComponent(profile)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)

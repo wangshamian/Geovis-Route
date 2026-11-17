@@ -4,7 +4,7 @@ ARG CONTAINER_WORK_DIR=/home/ors/openrouteservice
 
 FROM gr-test-scenarios-war-builder:latest AS gr-test-scenarios-war-bare
 
-HEALTHCHECK --interval=3s --timeout=2s --retries=4 CMD wget --quiet --tries=1 --spider http://localhost:8080/ors/v2/health || exit 1
+HEALTHCHECK --interval=3s --timeout=2s --retries=4 CMD wget --quiet --tries=1 --spider http://localhost:8080/gr/health || exit 1
 
 EXPOSE 8080
 

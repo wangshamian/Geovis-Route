@@ -116,8 +116,8 @@ public abstract class TileBasedElevationProvider implements ElevationProvider {
         if (dir != null)
             return dir;
 
-        logger.info(this.toString() + " Elevation Provider, from: " + baseUrl + ", to: " + cacheDir + ", as: " + daType +
-                " using interpolate: " + interpolate);
+        logger.info(this.toString() + " 高程提供器, 来源: " + baseUrl + ", 目标: " + cacheDir + ", 存储类型: " + daType +
+                " 使用插值: " + interpolate);
         return dir = new GHDirectory(cacheDir.getAbsolutePath(), daType);
     }
 

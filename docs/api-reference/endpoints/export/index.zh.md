@@ -28,7 +28,7 @@ cbf: [2,4,5]
 
 ```shell
 curl -X 'POST' \
-  'http://localhost:8082/ors/v2/export/driving-car/json' \
+  'http://localhost:8082/gr/export/driving-car/json' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{
@@ -251,7 +251,7 @@ json 响应包含该 routing profile 相关的边界框内的节点和边。
 
 ```shell
 curl -X 'POST' \
-  'http://localhost:8082/ors/v2/export/driving-car/topojson' \
+  'http://localhost:8082/gr/export/driving-car/topojson' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{

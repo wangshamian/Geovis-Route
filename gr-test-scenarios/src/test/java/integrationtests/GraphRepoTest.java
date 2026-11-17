@@ -206,7 +206,7 @@ public class GraphRepoTest extends ContainerInitializer {
                 put("driving-car", true);
             }});
             OrsContainerFileSystemCheck.assertDirectoryExists(container, "/home/ors/openrouteservice/graphs/driving-car", true);
-            checkAvoidAreaRequest("http://" + container.getHost() + ":" + container.getFirstMappedPort() + "/ors/v2/directions/driving-car/geojson", 200);
+            checkAvoidAreaRequest("http://" + container.getHost() + ":" + container.getFirstMappedPort() + "/gr/directions/driving-car/geojson", 200);
             container.stop();
         }
 

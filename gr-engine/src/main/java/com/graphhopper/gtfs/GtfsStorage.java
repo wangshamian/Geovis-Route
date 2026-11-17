@@ -294,7 +294,7 @@ public class GtfsStorage {
 	public void postInit() {
 		LocalDate latestStartDate = LocalDate.ofEpochDay(this.gtfsFeeds.values().stream().mapToLong(f -> f.getStartDate().toEpochDay()).max().getAsLong());
 		LocalDate earliestEndDate = LocalDate.ofEpochDay(this.gtfsFeeds.values().stream().mapToLong(f -> f.getEndDate().toEpochDay()).min().getAsLong());
-		LOGGER.info("Calendar range covered by all feeds: {} till {}", latestStartDate, earliestEndDate);
+		LOGGER.info("所有 feed 覆盖的日历范围: {} 至 {}", latestStartDate, earliestEndDate);
 		faresByFeed = new HashMap<>();
 		this.gtfsFeeds.forEach((feed_id, feed) -> faresByFeed.put(feed_id, feed.fares));
 		tripTransfers = new Trips(this);

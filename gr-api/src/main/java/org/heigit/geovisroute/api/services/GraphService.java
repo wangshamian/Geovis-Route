@@ -53,35 +53,35 @@ public class GraphService {
     public void checkForUpdatesInRepo() {
 
         if (Boolean.FALSE.equals(enabled)) {
-            LOGGER.debug("Graph management is disabled, skipping scheduled repository check...");
+            LOGGER.debug("图管理已禁用，跳过定时仓库检查...");
             return;
         }
         if (isActivatingGraphs.get()) {
-            LOGGER.debug("GraphService is currently activating new graphs, skipping scheduled repository check...");
+            LOGGER.debug("GraphService 正在激活新图，跳过定时仓库检查...");
             return;
         }
 
-        LOGGER.debug("Scheduled repository check...");
+        LOGGER.debug("开始定时仓库检查...");
 
         if (graphActivationAttemptWasBlocked.get()) {
-            LOGGER.warn("Skipping scheduled repository check, waiting for graph activation...");
+            LOGGER.warn("跳过定时仓库检查，正在等待图激活...");
             return;
         }
         if (isUpdateLocked()) {
-            LOGGER.warn("Skipping scheduled repository check: File %s found - remove lock file manually!".formatted(GRGraphManager.UPDATE_LOCKFILE_NAME));
+            LOGGER.warn("跳过定时仓库检查：发现文件 %s，请手动删除锁文件！".formatted(GRGraphManager.UPDATE_LOCKFILE_NAME));
             return;
         }
 
         for (GRGraphManager orsGraphManager : graphManagers) {
             if (orsGraphManager.isBusy()) {
-                LOGGER.info("[%s] Scheduled repository check: Download or extraction in progress".formatted(orsGraphManager.getQualifiedProfileName()));
+                LOGGER.info("[%s] 定时仓库检查：正在下载或解压".formatted(orsGraphManager.getQualifiedProfileName()));
             } else {
-                LOGGER.info("[%s] Scheduled repository check: Checking for update.".formatted(orsGraphManager.getQualifiedProfileName()));
+                LOGGER.info("[%s] 定时仓库检查：正在检查更新。".formatted(orsGraphManager.getQualifiedProfileName()));
                 orsGraphManager.downloadAndExtractLatestGraphIfNecessary();
             }
         }
 
-        LOGGER.debug("Scheduled repository check done");
+        LOGGER.debug("定时仓库检查完成");
     }
 
     @Async
@@ -92,15 +92,15 @@ public class GraphService {
 
     public void checkForDownloadedGraphsToActivate(String trigger) {
         if (Boolean.FALSE.equals(enabled)) {
-            LOGGER.debug("Graph management is disabled, skipping %s activation check...".formatted(trigger.toLowerCase()));
+            LOGGER.debug("图管理已禁用，跳过 %s 激活检查...".formatted(trigger.toLowerCase()));
             return;
         }
         if (isActivatingGraphs.get()) {
-            LOGGER.debug("Graph activation is in progress, skipping %s scheduled activation check...".formatted(trigger.toLowerCase()));
+            LOGGER.debug("图激活正在进行中，跳过 %s 定时激活检查...".formatted(trigger.toLowerCase()));
             return;
         }
 
-        LOGGER.debug("%s graph activation check...".formatted(trigger));
+        LOGGER.debug("%s 图激活检查...".formatted(trigger));
 
         // 即使图激活已锁定：仍执行检查以启动 repeatedActivationAttempts。
 
@@ -118,30 +118,30 @@ public class GraphService {
         }
 
         if (!graphActivationNeeded) {
-            LOGGER.info("%s graph activation check done: No downloaded graphs found, no graph activation required.".formatted(trigger));
+            LOGGER.info("%s 图激活检查完成：未发现已下载的图，无需激活任何图。".formatted(trigger));
             return;
         }
         if (!graphActivationAllowed) {
-            LOGGER.info("%s graph activation check done: Activation currently not allowed, retrying every minute...".formatted(trigger));
+            LOGGER.info("%s 图激活检查完成：当前不允许激活，将每分钟重试...".formatted(trigger));
             graphActivationAttemptWasBlocked.set(true);
             return;
         }
         if (isActivationLocked()) {
-            LOGGER.warn("%s graph activation check done: File %s found - remove lock file manually! Retrying every minute...".formatted(
+            LOGGER.warn("%s 图激活检查完成：发现文件 %s，请手动删除锁文件！将每分钟重试...".formatted(
                     trigger,
                     GRGraphManager.ACTIVATION_LOCKFILE_NAME));
             graphActivationAttemptWasBlocked.set(true);
             return;
         }
 
-        LOGGER.info("%s graph activation check done: Performing graph activation...".formatted(trigger));
+        LOGGER.info("%s 图激活检查完成：开始执行图激活...".formatted(trigger));
         activateGraphs();
     }
 
     private boolean isGraphManagerBusyOrHasDownloadFile(GRGraphManager orsGraphManager, String trigger) {
         if (orsGraphManager.isBusy() || orsGraphManager.hasGraphDownloadFile()) {
             if (!graphActivationAttemptWasBlocked.get()) {
-                LOGGER.info("[%s] %s graph activation check: Download or extraction in progress".formatted(
+                LOGGER.info("[%s] %s 图激活检查：正在下载或解压".formatted(
                         orsGraphManager.getQualifiedProfileName(),
                         trigger
                 ));
@@ -153,7 +153,7 @@ public class GraphService {
 
     private void logDownloadedExtractedGraphAvailable(GRGraphManager orsGraphManager, String trigger) {
         if (!graphActivationAttemptWasBlocked.get()) {
-            LOGGER.info("[%s] %s graph activation check: Downloaded extracted graph available".formatted(
+            LOGGER.info("[%s] %s 图激活检查：已存在下载并解压完成的图".formatted(
                     orsGraphManager.getQualifiedProfileName(),
                     trigger));
         }
@@ -163,15 +163,15 @@ public class GraphService {
     @Scheduled(fixedDelay = 1, timeUnit = TimeUnit.MINUTES)
     public void repeatedGraphActivationAttempt() {
         if (Boolean.FALSE.equals(enabled)) {
-            LOGGER.trace("Graph management is disabled, skipping repeated attempt to activate graphs...");
+            LOGGER.trace("图管理已禁用，跳过重复尝试激活图...");
             return;
         }
         if (isActivatingGraphs.get()) {
-            LOGGER.debug("Graph activation is in progress, skipping repeated attempt to activate graphs...");
+            LOGGER.debug("图激活正在进行中，跳过重复尝试激活图...");
             return;
         }
         if (graphActivationAttemptWasBlocked.get()) {
-            LOGGER.info("Repeated attempt to activate graphs...");
+            LOGGER.info("重复尝试激活图...");
             checkForDownloadedGraphsToActivate("Repeated");
         }
     }
@@ -203,7 +203,7 @@ public class GraphService {
             for (RoutingProfile profile : routingProfileManager.getUniqueProfiles()) {
                 GRGraphManager orsGraphManager = profile.getGraphhopper().getOrsGraphManager();
                 if (orsGraphManager != null && orsGraphManager.useGraphRepository()) {
-                    LOGGER.debug("[%s] Adding orsGraphManager for profile %s with encoder %s to GraphService".formatted(
+                    LOGGER.debug("[%s] 正在将 profile %s（encoder 为 %s）的 orsGraphManager 添加到 GraphService".formatted(
                             orsGraphManager.getQualifiedProfileName(),
                             orsGraphManager.getQualifiedProfileName(),
                             profile.getProfileConfiguration().getEncoderName()));
@@ -211,7 +211,7 @@ public class GraphService {
                 }
             }
         } catch (Exception e) {
-            LOGGER.warn("Unable to activate graphs due to an unexpected exception: " + e);
+            LOGGER.warn("由于未预期的异常，无法激活图：" + e);
         } finally {
             isActivatingGraphs.set(false);
             graphActivationAttemptWasBlocked.set(false);

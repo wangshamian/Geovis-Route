@@ -285,7 +285,7 @@ public class LandmarkStorage {
             StopWatch sw = new StopWatch().start();
             blockedEdges = findBorderEdgeIds(areaIndex);
             if (logDetails)
-                LOGGER.info("Made " + blockedEdges.size() + " edges inaccessible. Calculated country cut in " + sw.stop().getSeconds() + "s, " + Helper.getMemInfo());
+                LOGGER.info("已将 " + blockedEdges.size() + " 条边设为不可通行。国家边界切割计算耗时 " + sw.stop().getSeconds() + " 秒, " + Helper.getMemInfo());
         } else {
             blockedEdges = new IntHashSet();
         }
@@ -296,7 +296,7 @@ public class LandmarkStorage {
         StopWatch sw = new StopWatch().start();
         ConnectedComponents graphComponents = TarjanSCC.findComponents(graph, tarjanFilter, true);
         if (logDetails)
-            LOGGER.info("Calculated " + graphComponents.getComponents().size() + " subnetworks via tarjan in " + sw.stop().getSeconds() + "s, " + Helper.getMemInfo());
+            LOGGER.info("已通过 tarjan 计算出 " + graphComponents.getComponents().size() + " 个子网络，耗时 " + sw.stop().getSeconds() + " 秒, " + Helper.getMemInfo());
 
         String additionalInfo = "";
         // guess the factor
@@ -312,7 +312,7 @@ public class LandmarkStorage {
         }
 
         if (logDetails)
-            LOGGER.info("init landmarks for subnetworks with node count greater than " + minimumNodes + " with factor:" + factor + additionalInfo);
+            LOGGER.info("为节点数大于 " + minimumNodes + " 的子网络初始化 landmark，factor:" + factor + additionalInfo);
 
         int nodes = 0;
         for (IntArrayList subnetworkIds : graphComponents.getComponents()) {
@@ -330,8 +330,8 @@ public class LandmarkStorage {
                 if (subnetworks[nextStartNode] == UNSET_SUBNETWORK) {
                     if (logDetails) {
                         GHPoint p = createPoint(graph, nextStartNode);
-                        LOGGER.info("start node: " + nextStartNode + " (" + p + ") subnetwork " + index + ", subnetwork size: " + subnetworkIds.size()
-                                + ", " + Helper.getMemInfo() + ((areaIndex == null) ? "" : " area:" + areaIndex.query(p.lat, p.lon)));
+                        LOGGER.info("起始节点: " + nextStartNode + " (" + p + ") 子网络 " + index + ", 子网络大小: " + subnetworkIds.size()
+                                + ", " + Helper.getMemInfo() + ((areaIndex == null) ? "" : " 区域:" + areaIndex.query(p.lat, p.lon)));
                     }
 
                     if (createLandmarksForSubnetwork(nextStartNode, subnetworks, accessFilter))
@@ -339,7 +339,7 @@ public class LandmarkStorage {
                 }
             }
             if (index < 0)
-                LOGGER.warn("next start node not found in big enough network of size " + subnetworkIds.size() + ", first element is " + subnetworkIds.get(0) + ", " + createPoint(graph, subnetworkIds.get(0)));
+                LOGGER.warn("在大小足够的网络中未找到下一个起始节点，网络大小 " + subnetworkIds.size() + ", 第一个元素为 " + subnetworkIds.get(0) + ", " + createPoint(graph, subnetworkIds.get(0)));
         }
 
         int subnetworkCount = landmarkIDs.size();
@@ -369,7 +369,7 @@ public class LandmarkStorage {
         }
 
         if (logDetails)
-            LOGGER.info("Finished landmark creation. Subnetwork node count sum " + nodes + " vs. nodes " + graph.getNodes());
+            LOGGER.info("landmark 创建完成。子网络节点数合计 " + nodes + " vs. 节点数 " + graph.getNodes());
         initialized = true;
     }
 
@@ -397,8 +397,8 @@ public class LandmarkStorage {
                 int nextStartNode = subnetworkIds.get(index);
                 LandmarkExplorer explorer = findLandmarks(tmpLandmarkNodeIds, nextStartNode, accessFilter, "estimate " + index);
                 if (explorer.getFromCount() < minimumNodes) {
-                    LOGGER.error("method findLandmarks for " + createPoint(graph, nextStartNode) + " (" + nextStartNode + ")"
-                            + " resulted in too few visited nodes: " + explorer.getFromCount() + " vs expected minimum " + minimumNodes + ", see #2256");
+                    LOGGER.error("对 " + createPoint(graph, nextStartNode) + " (" + nextStartNode + ")"
+                            + " 调用 findLandmarks 方法后访问到的节点过少: " + explorer.getFromCount() + " vs 期望最小值 " + minimumNodes + ", 参见 #2256");
                     continue;
                 }
 
@@ -460,7 +460,7 @@ public class LandmarkStorage {
         }
 
         if (pickedPrecalculatedLandmarks) {
-            LOGGER.info("Picked " + tmpLandmarkNodeIds.length + " landmark suggestions, skip finding landmarks");
+            LOGGER.info("已选取 " + tmpLandmarkNodeIds.length + " 个 landmark 建议，跳过 landmark 查找");
         } else {
             LandmarkExplorer explorer = findLandmarks(tmpLandmarkNodeIds, startNode, accessFilter, "create");
             if (explorer.getFromCount() < minimumNodes) {
@@ -469,7 +469,7 @@ public class LandmarkStorage {
                 return false;
             }
             if (logDetails)
-                LOGGER.info("Finished searching landmarks for subnetwork " + subnetworkId + " of size " + explorer.getVisitedNodes());
+                LOGGER.info("子网络 " + subnetworkId + " 的 landmark 查找完成，访问节点数 " + explorer.getVisitedNodes());
         }
 
         // 2) calculate weights for all landmarks -> 'from' and 'to' weight
@@ -504,8 +504,8 @@ public class LandmarkStorage {
             }
 
             if (logDetails && lmIdx % logOffset == 0)
-                LOGGER.info("Set landmarks weights [" + weighting + "]. "
-                        + "Progress " + (int) (100.0 * lmIdx / tmpLandmarkNodeIds.length) + "%");
+                LOGGER.info("已设置 landmark 权重 [" + weighting + "]。"
+                        + "进度 " + (int) (100.0 * lmIdx / tmpLandmarkNodeIds.length) + "%");
         }
 
         // TODO set weight to SHORT_MAX if entry has either no 'from' or no 'to' entry
@@ -793,9 +793,9 @@ public class LandmarkStorage {
                 explorer.runAlgo();
                 landmarkNodeIdsToReturn[lmIdx + 1] = explorer.getLastEntry().adjNode;
                 if (logDetails && lmIdx % logOffset == 0)
-                    LOGGER.info("Finding landmarks [" + lmConfig + "] in network [" + explorer.getVisitedNodes() + "] for " + info + ". "
-                            + "Start node:" + startNode + " (" + createPoint(graph, startNode) + ")"
-                            + "Progress " + (int) (100.0 * lmIdx / landmarkNodeIdsToReturn.length) + "%, " + Helper.getMemInfo());
+                    LOGGER.info("正在查找 landmark [" + lmConfig + "]，所在网络 [" + explorer.getVisitedNodes() + "]，对象 " + info + ". "
+                            + "起始节点:" + startNode + " (" + createPoint(graph, startNode) + ")"
+                            + "进度 " + (int) (100.0 * lmIdx / landmarkNodeIdsToReturn.length) + "%, " + Helper.getMemInfo());
             }
         }
         return explorer;
@@ -915,8 +915,8 @@ public class LandmarkStorage {
                     if (sn != subnetworkId) {
                         if (sn != UNSET_SUBNETWORK && sn != UNCLEAR_SUBNETWORK) {
                             // this is ugly but can happen in real world, see testWithOnewaySubnetworks
-                            LOGGER.error("subnetworkId for node " + nodeId
-                                    + " (" + createPoint(graph, nodeId) + ") already set (" + sn + "). " + "Cannot change to " + subnetworkId);
+                            LOGGER.error("节点 " + nodeId
+                                    + " (" + createPoint(graph, nodeId) + ") 的 subnetworkId 已设置 (" + sn + "). " + "无法改为 " + subnetworkId);
 
                             failed.set(true);
                             return false;
@@ -948,8 +948,8 @@ public class LandmarkStorage {
 
             if ((double) maxedout.get() / map.size() > 0.1) {
                 LOGGER.warn("landmark " + lmIdx + " (" + nodeAccess.getLat(lmNodeId) + "," + nodeAccess.getLon(lmNodeId) + "): " +
-                        "too many weights were maxed out (" + maxedout.get() + "/" + map.size() + "). Use a bigger factor than " + lms.factor
-                        + ". For example use maximum_lm_weight: " + finalMaxWeight.getValue() * 1.2 + " in your LM profile definition");
+                        "过多权重达到上限 (" + maxedout.get() + "/" + map.size() + ")。请使用大于 " + lms.factor
+                        + " 的 factor。例如在 LM profile 定义中使用 maximum_lm_weight: " + finalMaxWeight.getValue() * 1.2);
             }
         }
     }

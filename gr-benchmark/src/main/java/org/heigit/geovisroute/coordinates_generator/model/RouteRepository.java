@@ -36,7 +36,7 @@ public class RouteRepository {
             }
             return false;
         } catch (Exception e) {
-            LOGGER.error("Error adding route: {}", e.getMessage());
+            LOGGER.error("添加路线时出错：{}", e.getMessage());
             return false;
         } finally {
             lock.writeLock().unlock();

@@ -82,7 +82,7 @@ public class GraphHopperGtfs extends GraphHopper {
             if (ghConfig.getBool("gtfs.trip_based", false)) {
                 for (String trafficDayString : ghConfig.getString("gtfs.schedule_day", null).split(",")) {
                     LocalDate trafficDay = LocalDate.parse(trafficDayString);
-                    LOGGER.info("Loading trip-based transfers for pt router. Schedule day: {}", trafficDay);
+                    LOGGER.info("正在为 pt router 加载基于 trip 的换乘。运营日: {}", trafficDay);
                     gtfsStorage.tripTransfers.getTripTransfers().put(trafficDay, gtfsStorage.deserializeTripTransfersMap("trip_transfers_" + trafficDayString));
                 }
                 for (Map.Entry<String, GTFSFeed> entry : this.gtfsStorage.getGtfsFeeds().entrySet()) {
@@ -120,7 +120,7 @@ public class GraphHopperGtfs extends GraphHopper {
                         }
                         return true;
                     });
-                    LOGGER.info("Building transit graph for feed {}", gtfsFeed.feedId);
+                    LOGGER.info("正在为 feed {} 构建公交图", gtfsFeed.feedId);
                     gtfsReader.buildPtNetwork();
                     allReaders.put(id, gtfsReader);
                 });
@@ -129,10 +129,10 @@ public class GraphHopperGtfs extends GraphHopper {
                     ArrayListMultimap<Integer, GtfsStorage.FeedIdWithStopId> stopsForStationNode = Multimaps.invertFrom(Multimaps.forMap(gtfsStorage.getStationNodes()), ArrayListMultimap.create());
                     for (String trafficDayString : ghConfig.getString("gtfs.schedule_day", null).split(",")) {
                         LocalDate trafficDay = LocalDate.parse(trafficDayString);
-                        LOGGER.info("Computing trip-based transfers for pt router. Schedule day: {}", trafficDay);
+                        LOGGER.info("正在为 pt router 计算基于 trip 的换乘。运营日: {}", trafficDay);
                         Map<Trips.TripAtStopTime, Collection<Trips.TripAtStopTime>> tripTransfersMap = gtfsStorage.tripTransfers.getTripTransfers(trafficDay);
                         gtfsStorage.tripTransfers.findAllTripTransfersInto(tripTransfersMap, trafficDay, allTransfers, stopsForStationNode);
-                        LOGGER.info("Writing. Schedule day: {}", trafficDay);
+                        LOGGER.info("正在写入。运营日: {}", trafficDay);
                         gtfsStorage.serializeTripTransfersMap("trip_transfers_" + trafficDayString, tripTransfersMap);
                     }
                 }
@@ -148,7 +148,7 @@ public class GraphHopperGtfs extends GraphHopper {
     }
 
     private void interpolateTransfers(HashMap<String, GtfsReader> readers, Map<String, Transfers> allTransfers) {
-        LOGGER.info("Looking for transfers");
+        LOGGER.info("正在查找换乘");
         final int maxTransferWalkTimeSeconds = ghConfig.getInt("gtfs.max_transfer_interpolation_walk_time_seconds", 120);
         QueryGraph queryGraph = QueryGraph.create(getBaseGraph(), Collections.emptyList());
         Weighting transferWeighting = createWeighting(getProfile("foot"), new PMap());
@@ -166,13 +166,13 @@ public class GraphHopperGtfs extends GraphHopper {
                                 GtfsStorage.PlatformDescriptor toPlatformDescriptor = ptEdge.getAttrs().platformDescriptor;
                                 LOGGER.debug(fromPlatformDescriptor + " -> " + toPlatformDescriptor);
                                 if (!toPlatformDescriptor.feed_id.equals(fromPlatformDescriptor.feed_id)) {
-                                    LOGGER.debug(" Different feed. Inserting transfer with " + (int) (label.streetTime / 1000L) + " s.");
+                                    LOGGER.debug(" 不同 feed。正在插入步行时间为 " + (int) (label.streetTime / 1000L) + " 秒的换乘。");
                                     insertInterpolatedTripTransfer(fromPlatformDescriptor, toPlatformDescriptor, (int) (label.streetTime / 1000L), getSkippedEdgesForTransfer(label));
                                     insertInterpolatedTransfer(label, toPlatformDescriptor, readers, getSkippedEdgesForTransfer(label));
                                 } else {
                                     List<Transfer> transfersToStop = transfers.getTransfersToStop(toPlatformDescriptor.stop_id, routeIdOrNull(toPlatformDescriptor));
                                     if (transfersToStop.stream().noneMatch(t -> t.from_stop_id.equals(fromPlatformDescriptor.stop_id))) {
-                                        LOGGER.debug("  Inserting transfer with " + (int) (label.streetTime / 1000L) + " s.");
+                                        LOGGER.debug("  正在插入步行时间为 " + (int) (label.streetTime / 1000L) + " 秒的换乘。");
                                         insertInterpolatedTripTransfer(fromPlatformDescriptor, toPlatformDescriptor, (int) (label.streetTime / 1000L), getSkippedEdgesForTransfer(label));
                                         insertInterpolatedTransfer(label, toPlatformDescriptor, readers, getSkippedEdgesForTransfer(label));
                                     }

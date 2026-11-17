@@ -45,7 +45,7 @@ public class CoordinateGeneratorHelper {
 
         // 首先检查中心点是否在范围内，否则无法生成
         if (!isWithinExtent(center, extent)) {
-            LOGGER.debug("Center point is outside the specified extent - impossible to find a point");
+            LOGGER.debug("中心点位于指定范围之外，无法找到满足条件的点");
             return new double[0];
         }
 
@@ -55,7 +55,7 @@ public class CoordinateGeneratorHelper {
             return candidate;
         }
 
-        LOGGER.error("Could not find a point that satisfies both constraints");
+        LOGGER.error("无法找到同时满足两个约束条件的点");
         // 若未找到点则返回空数组
         return new double[0];
     }
@@ -65,7 +65,7 @@ public class CoordinateGeneratorHelper {
         for (int i = 0; i < maxAttempts; i++) {
             double[] candidate = randomCoordinateInRadius(center, radiusMeters);
             if (isWithinExtent(candidate, extent)) {
-                LOGGER.debug("Generated point using alternative approach after {} attempt(s)", i + 1);
+                LOGGER.debug("经过 {} 次尝试后，已通过替代方案生成坐标点", i + 1);
                 return candidate;
             }
         }
@@ -145,7 +145,7 @@ public class CoordinateGeneratorHelper {
      * @return 坐标列表
      */
     public static List<double[]> randomCoordinatesInExtent(int count, double[] extent) {
-        LOGGER.debug("Generating {} random coordinates within extent [{}, {}, {}, {}]",
+        LOGGER.debug("正在生成 {} 个随机坐标，范围为 [{}, {}, {}, {}]",
                 count, extent[0], extent[1], extent[2], extent[3]);
 
         List<double[]> points = new ArrayList<>();
@@ -165,7 +165,7 @@ public class CoordinateGeneratorHelper {
             point = new double[] { x, y };
             tries++;
             if (tries >= maxTries) {
-                LOGGER.warn("Failed to generate point within extent after {} tries", maxTries);
+                LOGGER.warn("尝试 {} 次后仍未能在范围内生成坐标点", maxTries);
                 return point; // 返回最后一次尝试的点
             }
         } while (!isWithinExtent(point, extent));

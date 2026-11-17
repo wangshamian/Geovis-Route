@@ -75,19 +75,19 @@ public class CountryBordersReader implements Serializable {
         try {
             if (!"".equals(borderFile)) {
                 JSONObject data = readBordersData();
-                LOGGER.info("Border geometries read");
+                LOGGER.info("国界几何数据已读取");
 
                 createGeometries(data);
             }
 
             readIds();
-            LOGGER.info("Border ids data read");
+            LOGGER.info("国界 id 数据已读取");
 
             readOpenBorders();
-            LOGGER.info("Border openness data read");
+            LOGGER.info("国界开放状态数据已读取");
         } catch (IOException ioe) {
             // 读取数据时出现问题
-            LOGGER.error("Could not access file(s) required for border crossing analysis");
+            LOGGER.error("无法访问国界穿越分析所需的文件");
             throw ioe;
         }
         currentInstance = this;
@@ -188,7 +188,7 @@ public class CountryBordersReader implements Serializable {
                 data = sb.toString();
             }
         } catch (IOException ioe) {
-            LOGGER.warn("Cannot access borders file!");
+            LOGGER.warn("无法访问国界文件！");
             throw ioe;
         } finally {
             try {
@@ -197,7 +197,7 @@ public class CountryBordersReader implements Serializable {
                 if (buf != null)
                     buf.close();
             } catch (IOException ioe) {
-                LOGGER.warn("Error closing file reader buffers!");
+                LOGGER.warn("关闭文件读取缓冲区时出错！");
             }
         }
 
@@ -247,11 +247,11 @@ public class CountryBordersReader implements Serializable {
                 }
 
             } catch (Exception e) {
-                LOGGER.warn("Error reading country polygon from borders file!" + e.getMessage());
+                LOGGER.warn("从国界文件读取国家多边形时出错！" + e.getMessage());
             }
         }
 
-        LOGGER.info(objectCount + " countries read in " + hierarchyCount + " hiearchies");
+        LOGGER.info("已读取 " + objectCount + " 个国家，分布于 " + hierarchyCount + " 个层级");
     }
 
     /**
@@ -392,7 +392,7 @@ public class CountryBordersReader implements Serializable {
             try {
                 shortID = Short.parseShort(col.get(0));
             } catch (NumberFormatException e) {
-                LOGGER.error("Invalid country ID " + col.get(0));
+                LOGGER.error("无效的国家 ID " + col.get(0));
                 continue;
             }
             if (col.size() >= 3) {
@@ -409,19 +409,19 @@ public class CountryBordersReader implements Serializable {
                 isoCCA3++;
             }
         }
-        LOGGER.info(countries + " country IDs read");
+        LOGGER.info("已读取 " + countries + " 个国家 ID");
         if (isoCCA2 > 0) {
             if (isoCCA2 < countries) {
-                LOGGER.warn((countries - isoCCA2) + " countries have no ISO 3166-1 CCA2 code assigned.");
+                LOGGER.warn((countries - isoCCA2) + " 个国家未分配 ISO 3166-1 CCA2 代码。");
             } else {
-                LOGGER.info("ISO 3166-1 CCA2 codes enabled for all countries");
+                LOGGER.info("所有国家均已启用 ISO 3166-1 CCA2 代码");
             }
         }
         if (isoCCA3 > 0) {
             if (isoCCA3 < countries) {
-                LOGGER.warn((countries - isoCCA3) + " countries have no ISO 3166-1 CCA3 code assigned.");
+                LOGGER.warn((countries - isoCCA3) + " 个国家未分配 ISO 3166-1 CCA3 代码。");
             } else {
-                LOGGER.info("ISO 3166-1 CCA3 codes enabled for all countries");
+                LOGGER.info("所有国家均已启用 ISO 3166-1 CCA3 代码");
             }
         }
     }
@@ -451,7 +451,7 @@ public class CountryBordersReader implements Serializable {
             objectOutputStream.writeObject(this);
             objectOutputStream.flush();
         } catch (Exception exception) {
-            LOGGER.error("Could not write the CountryBordersReader object to file: " + exception.getMessage());
+            LOGGER.error("无法将 CountryBordersReader 对象写入文件: " + exception.getMessage());
         }
     }
 
@@ -459,7 +459,7 @@ public class CountryBordersReader implements Serializable {
         try (ObjectInputStream objectInputStream = new ObjectInputStream(new FileInputStream(file))) {
             currentInstance = (CountryBordersReader) objectInputStream.readObject();
         } catch (Exception exception) {
-            LOGGER.error("Could not read the CountryBordersReader object from file: " + exception.getMessage());
+            LOGGER.error("无法从文件读取 CountryBordersReader 对象: " + exception.getMessage());
         }
         return currentInstance;
     }

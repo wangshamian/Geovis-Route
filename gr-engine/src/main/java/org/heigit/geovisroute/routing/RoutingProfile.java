@@ -127,11 +127,11 @@ public class RoutingProfile {
         }
 
         if (LOGGER.isInfoEnabled()) {
-            LOGGER.info("[%d] Profile: '%s', encoder: '%s', location: '%s'.".formatted(profileId, profileProperties.getProfileName(), profileProperties.getEncoderName().toString(), gh.getOrsGraphManager().getActiveGraphDirAbsPath()));
+            LOGGER.info("[%d] 配置: '%s'，编码器: '%s'，位置: '%s'。".formatted(profileId, profileProperties.getProfileName(), profileProperties.getEncoderName().toString(), gh.getOrsGraphManager().getActiveGraphDirAbsPath()));
             BaseGraph baseGraph = gh.getBaseGraph();
-            LOGGER.info("[%d] Edges: %s - Nodes: %s.".formatted(profileId, baseGraph.getEdges(), baseGraph.getNodes()));
-            LOGGER.info("[%d] Total time: %s.".formatted(profileId, TimeUtility.getElapsedTime(startTime, true)));
-            LOGGER.info("[%d] Finished at: %s.".formatted(profileId, new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date())));
+            LOGGER.info("[%d] 边: %s - 节点: %s。".formatted(profileId, baseGraph.getEdges(), baseGraph.getNodes()));
+            LOGGER.info("[%d] 总耗时: %s。".formatted(profileId, TimeUtility.getElapsedTime(startTime, true)));
+            LOGGER.info("[%d] 完成时间: %s。".formatted(profileId, new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date())));
         }
 
         // 生成一个标记，用于帮助跟踪 OSM 文件大小的变化。TODO 检查是否仍在使用

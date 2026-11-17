@@ -113,14 +113,14 @@ public class PrepareLandmarks {
             throw new IllegalStateException("Call doWork only once!");
         prepared = true;
         StopWatch sw = new StopWatch().start();
-        LOGGER.info("Start calculating " + lms.getLandmarkCount() + " landmarks, weighting:" + lms.getLmSelectionWeighting() + ", " + Helper.getMemInfo());
+        LOGGER.info("开始计算 " + lms.getLandmarkCount() + " 个 landmark，weighting:" + lms.getLmSelectionWeighting() + ", " + Helper.getMemInfo());
 
         lms.createLandmarks();
         lms.flush();
 
-        LOGGER.info("Calculated landmarks for " + (lms.getSubnetworksWithLandmarks() - 1) + " subnetworks, took:" + (int) sw.stop().getSeconds() + "s => "
-                + lms.getLandmarksAsGeoJSON() + ", stored weights:" + lms.getLandmarkCount()
-                + ", nodes:" + graph.getNodes() + ", " + Helper.getMemInfo());
+        LOGGER.info("已为 " + (lms.getSubnetworksWithLandmarks() - 1) + " 个子网络计算 landmark，耗时:" + (int) sw.stop().getSeconds() + " 秒 => "
+                + lms.getLandmarksAsGeoJSON() + ", 存储的权重数:" + lms.getLandmarkCount()
+                + ", 节点数:" + graph.getNodes() + ", " + Helper.getMemInfo());
         totalPrepareTime = sw.getMillis();
     }
 

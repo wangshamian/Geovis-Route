@@ -21,27 +21,25 @@ public class RouteGeneratorApp {
                 return;
             }
 
-            LOGGER.info("Creating coordinate generator for routes...");
+            LOGGER.info("正在创建用于路线的坐标生成器...");
             CoordinateGeneratorRoute generator = cli.createGenerator();
 
-            LOGGER.info("Generating {} routes...", generator.getNumRoutes());
+            LOGGER.info("正在生成 {} 条路线...", generator.getNumRoutes());
             generator.generateRoutes();
             LOGGER.info("\n");
 
             List<Route> result = generator.getResult();
-            LOGGER.info("Writing {} routes to {}", result.size(), cli.getOutputFile());
+            LOGGER.info("正在将 {} 条路线写入 {}", result.size(), cli.getOutputFile());
             generator.writeToCSV(cli.getOutputFile());
 
             LOGGER.info("\n");
-            LOGGER.info("Successfully generated {} route{}",
-                    result.size(),
-                    result.size() != 1 ? "s" : "");
-            LOGGER.info("Results written to: {}", cli.getOutputFile());
+            LOGGER.info("已成功生成 {} 条路线", result.size());
+            LOGGER.info("结果已写入：{}", cli.getOutputFile());
         } catch (NumberFormatException e) {
-            LOGGER.error("Error parsing numeric arguments: {}", e.getMessage());
+            LOGGER.error("解析数值参数时出错：{}", e.getMessage());
             System.exit(1);
         } catch (IOException e) {
-            LOGGER.error("Error writing to output file: {}", e.getMessage());
+            LOGGER.error("写入输出文件时出错：{}", e.getMessage());
             System.exit(1);
         }
         System.exit(0);

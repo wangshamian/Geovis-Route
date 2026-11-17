@@ -113,7 +113,7 @@ public class OSMRestrictionConverter {
         for (LongCursor c : members.getAllWays())
             if (!edgesByWay.apply(c.value).hasNext()) {
                 // this happens for example at the map borders or when certain ways like footways are excluded
-                LOGGER.debug("Restriction relation " + relation.getId() + " uses excluded way " + c.value + ". Relation ignored.");
+                LOGGER.debug("限制 relation " + relation.getId() + " 使用了被排除的 way " + c.value + "。该 relation 已被忽略。");
                 return false;
             }
         return true;

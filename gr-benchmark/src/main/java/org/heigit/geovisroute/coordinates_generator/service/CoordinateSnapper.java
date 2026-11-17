@@ -33,20 +33,20 @@ public class CoordinateSnapper {
     }
     
     public List<double[]> snapCoordinates(List<double[]> coordinates, String profile) {
-        LOGGER.debug("Snapping {} coordinates for profile: {}", coordinates.size(), profile);
+        LOGGER.debug("正在吸附 {} 个坐标，profile 为 {}", coordinates.size(), profile);
         
         try {
             HttpPost request = createSnapRequest(coordinates, profile);
             String response = requestExecutor.apply(request);
             
             if (response == null) {
-                LOGGER.debug("Received null response from snap API");
+                LOGGER.debug("吸附 API 返回了 null 响应");
                 return Collections.emptyList();
             }
             
             return processSnapResponse(response);
         } catch (IOException e) {
-            LOGGER.error("Error snapping coordinates: {}", e.getMessage());
+            LOGGER.error("吸附坐标时出错：{}", e.getMessage());
             return Collections.emptyList();
         }
     }
@@ -56,7 +56,7 @@ public class CoordinateSnapper {
         payload.put(LOCATIONS_KEY, coordinates);
         payload.put("radius", DEFAULT_SNAP_RADIUS);
 
-        HttpPost request = new HttpPost(baseUrl + "/v2/snap/" + profile);
+        HttpPost request = new HttpPost(baseUrl + "/snap/" + profile);
         headers.forEach(request::addHeader);
         request.setEntity(new StringEntity(mapper.writeValueAsString(payload), ContentType.APPLICATION_JSON));
         return request;
@@ -71,7 +71,7 @@ public class CoordinateSnapper {
 
         Object locationsObj = responseMap.get(LOCATIONS_KEY);
         if (!(locationsObj instanceof List<?>)) {
-            LOGGER.debug("Snap response contained no valid locations array");
+            LOGGER.debug("吸附响应中不包含有效的 locations 数组");
             return snappedCoordinates;
         }
 
@@ -83,9 +83,9 @@ public class CoordinateSnapper {
             if (coords != null && coords.size() >= 2) {
                 double[] point = new double[] { coords.get(0).doubleValue(), coords.get(1).doubleValue() };
                 snappedCoordinates.add(point);
-                LOGGER.debug("Added snapped coordinate: [{}, {}]", point[0], point[1]);
+                LOGGER.debug("已添加吸附后的坐标：[{}, {}]", point[0], point[1]);
             } else {
-                LOGGER.debug("Invalid location in snap response");
+                LOGGER.debug("吸附响应中的 location 无效");
             }
         }
 

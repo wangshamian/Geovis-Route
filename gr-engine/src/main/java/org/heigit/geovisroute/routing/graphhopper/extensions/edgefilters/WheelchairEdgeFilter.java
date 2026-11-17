@@ -44,7 +44,7 @@ public class WheelchairEdgeFilter implements EdgeFilter {
     @Override
     public boolean accept(EdgeIteratorState iter) {
 //        storage.getEdgeValues(iter.getEdge(), attributes, buffer);
-        LOGGER.debug("edge: " + iter + (attributes.hasValues() ? " suitable: " + attributes.isSuitable() + " surfaceQualityKnown: " + attributes.isSurfaceQualityKnown() : " no wheelchair attributes"));
+        LOGGER.debug("边: " + iter + (attributes.hasValues() ? " 适用: " + attributes.isSuitable() + " 路面质量已知: " + attributes.isSurfaceQualityKnown() : " 无 wheelchair 属性"));
         return !attributes.hasValues() || !(
                 checkSurfaceType()
                         || checkSmoothnessType()

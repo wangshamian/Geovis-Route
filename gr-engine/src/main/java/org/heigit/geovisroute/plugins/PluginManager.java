@@ -54,7 +54,7 @@ public class PluginManager<T extends Plugin> {
                 if (instance != null) {
                     result.add(instance);
                 } else
-                    LOGGER.warn("'%s' was not found.".formatted(storageEntry.getKey()));
+                    LOGGER.warn("未找到 '%s'。".formatted(storageEntry.getKey()));
             }
         }
         return result;

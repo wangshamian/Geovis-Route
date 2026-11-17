@@ -33,20 +33,20 @@ public class IsochronesRangeLoadTest extends AbstractLoadTest {
 
     @Override
     protected void logConfigInfo() {
-        logger.info("Initializing IsochronesRangeLoadTest with configuration:");
-        logger.info("- Source files: {}", config.getSourceFiles());
-        logger.info("- Target profile: {}", config.getTargetProfile());
-        logger.info("- Concurrent users: {}", config.getNumConcurrentUsers());
-        logger.info("- Query sizes: {}", config.getQuerySizes());
-        logger.info("- Ranges: {}", config.getRanges());
-        logger.info("- Test unit: {}", config.getTestUnit());
-        logger.info("- Base URL: {}", config.getBaseUrl());
-        logger.info("- Execution mode: {}", config.isParallelExecution() ? "parallel" : "sequential");
+        logger.info("正在使用以下配置初始化 IsochronesRangeLoadTest：");
+        logger.info("- 数据源文件：{}", config.getSourceFiles());
+        logger.info("- 目标 profile：{}", config.getTargetProfile());
+        logger.info("- 并发用户数：{}", config.getNumConcurrentUsers());
+        logger.info("- 查询规模：{}", config.getQuerySizes());
+        logger.info("- 范围值：{}", config.getRanges());
+        logger.info("- 测试单位：{}", config.getTestUnit());
+        logger.info("- 基础 URL：{}", config.getBaseUrl());
+        logger.info("- 执行模式：{}", config.isParallelExecution() ? "parallel" : "sequential");
     }
 
     @Override
     protected void logTestTypeInfo() {
-        logger.info("Testing {} isochrones", config.getTestUnit());
+        logger.info("正在测试 {} 类型的等值线服务", config.getTestUnit());
     }
 
     @Override
@@ -81,7 +81,7 @@ public class IsochronesRangeLoadTest extends AbstractLoadTest {
                                                            Config config, RangeType rangeType, boolean isParallel) {
 
         logger.info(
-                "Creating scenario: name={}, locationCount={}, sourceFile={}, profile={}, rangeType={}, isParallel={}",
+                "正在创建场景：name={}, locationCount={}, sourceFile={}, profile={}, rangeType={}, isParallel={}",
                 name, locationCount, sourceFile, config.getTargetProfile(), rangeType, isParallel);
 
         String parallelOrSequential = isParallel ? "parallel" : "sequential";
@@ -98,7 +98,7 @@ public class IsochronesRangeLoadTest extends AbstractLoadTest {
 
             AtomicInteger remainingRecords = new AtomicInteger(targetRecords.size());
 
-            logger.info("Processing {} coordinates for profile {}", remainingRecords.get(),
+            logger.info("正在处理 {} 个坐标，profile 为 {}", remainingRecords.get(),
                     config.getTargetProfile());
 
             return scenario(name)
@@ -115,7 +115,7 @@ public class IsochronesRangeLoadTest extends AbstractLoadTest {
     private static HttpRequestActionBuilder createIsochroneRequest(String name, int locationCount, Config config,
             RangeType rangeType) {
         return http(name)
-                .post("/v2/isochrones/" + config.getTargetProfile())
+                .post("/isochrones/" + config.getTargetProfile())
                 .body(StringBody(session -> createRequestBody(session, locationCount, config, rangeType)))
                 .asJson()
                 .check(status().is(200));
@@ -131,7 +131,7 @@ public class IsochronesRangeLoadTest extends AbstractLoadTest {
                     "range", config.getRanges());
 
             String body = objectMapper.writeValueAsString(requestBody);
-            logger.debug("Created request body: {}", body);
+            logger.debug("已创建请求体：{}", body);
             return body;
         } catch (JsonProcessingException e) {
             throw new RequestBodyCreationException("Failed to create request body", e);
@@ -144,7 +144,7 @@ public class IsochronesRangeLoadTest extends AbstractLoadTest {
             Object lat = lats.get(i);
 
             if (lon == null || lat == null) {
-                logger.warn("Null coordinate at index {}: lon={}, lat={}", i, lon, lat);
+                logger.warn("索引 {} 处的坐标为 null：lon={}, lat={}", i, lon, lat);
                 continue;
             }
 
@@ -159,30 +159,30 @@ public class IsochronesRangeLoadTest extends AbstractLoadTest {
     }
 
     static List<List<Double>> createLocationsListFromArrays(Session session, int locationCount, Config config) {
-        logger.debug("Creating locations list for batch size: {}", locationCount);
+        logger.debug("正在按批次大小 {} 创建位置列表", locationCount);
         List<List<Double>> locations = new ArrayList<>();
 
         try {
-            logger.debug("Reading session data for fields: lon={}, lat={}", config.getFieldLon(), config.getFieldLat());
-            logger.debug("Session {}", session);
+            logger.debug("正在读取以下字段的会话数据：lon={}, lat={}", config.getFieldLon(), config.getFieldLat());
+            logger.debug("会话 {}", session);
             List<?> lons = session.get(config.getFieldLon());
             List<?> lats = session.get(config.getFieldLat());
 
             if (lons == null || lats == null) {
-                logger.error("Session values are null - lon: {}, lat: {}", lons, lats);
+                logger.error("会话数据为 null，lon: {}，lat: {}", lons, lats);
                 return locations;
             }
 
-            logger.debug("Session data - lon size: {}, lat size: {}", lons.size(), lats.size());
+            logger.debug("会话数据：lon 数量为 {}，lat 数量为 {}", lons.size(), lats.size());
 
             int size = Math.min(Math.min(locationCount, lons.size()), lats.size());
-            logger.debug("Processing {} coordinates", size);
+            logger.debug("正在处理 {} 个坐标", size);
 
             processCoordinates(locations, lons, lats, size);
 
-            logger.debug("Created location list with {} coordinate pairs", locations.size());
+            logger.debug("已创建包含 {} 个坐标对的位置列表", locations.size());
             if (!locations.isEmpty()) {
-                logger.debug("Sample coordinate: {}", locations.get(0));
+                logger.debug("示例坐标：{}", locations.get(0));
             }
 
         } catch (NumberFormatException e) {

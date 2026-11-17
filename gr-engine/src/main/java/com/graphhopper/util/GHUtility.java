@@ -236,8 +236,8 @@ public class GHUtility {
             }
             numEdges++;
         }
-        LOGGER.debug(String.format(Locale.ROOT, "Finished building random graph" +
-                        ", nodes: %d, edges: %d , min distance: %.2f, max distance: %.2f\n",
+        LOGGER.debug(String.format(Locale.ROOT, "随机图构建完成" +
+                        ", 节点数: %d, 边数: %d , 最小距离: %.2f, 最大距离: %.2f\n",
                 graph.getNodes(), graph.getEdges(), minDist, maxDist));
     }
 
@@ -597,9 +597,9 @@ public class GHUtility {
         double refWeight = refPath.getWeight();
         double weight = path.getWeight();
         if (Math.abs(refWeight - weight) > 1.e-2) {
-            LOGGER.warn("expected: " + refPath.calcNodes());
-            LOGGER.warn("given:    " + path.calcNodes());
-            LOGGER.warn("seed: " + seed);
+            LOGGER.warn("期望: " + refPath.calcNodes());
+            LOGGER.warn("实际:    " + path.calcNodes());
+            LOGGER.warn("随机种子: " + seed);
             fail("wrong weight: " + source + "->" + target + "\nexpected: " + refWeight + "\ngiven:    " + weight + "\nseed: " + seed);
         }
         if (Math.abs(path.getDistance() - refPath.getDistance()) > 1.e-1) {
@@ -657,9 +657,8 @@ public class GHUtility {
         double distAC = getMinDist(graph, shorterPath.get(a), longerPath.get(c));
         if (Math.abs(distABC - distAC) > 0.1)
             return false;
-        LOGGER.info("Distance " + shorterPath.get(a) + "-" + longerPath.get(c) + " is the same as distance " +
-                longerPath.get(a) + "-" + longerPath.get(b) + "-" + longerPath.get(c) + " -> there are multiple possibilities " +
-                "for shortest paths");
+        LOGGER.info("距离 " + shorterPath.get(a) + "-" + longerPath.get(c) + " 与距离 " +
+                longerPath.get(a) + "-" + longerPath.get(b) + "-" + longerPath.get(c) + " 相同 -> 最短路径存在多种可能");
         return true;
     }
 

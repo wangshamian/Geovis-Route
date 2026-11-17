@@ -26,7 +26,7 @@ public abstract class AbstractCoordinateGenerator {
     protected static final Logger LOGGER = LoggerFactory.getLogger(AbstractCoordinateGenerator.class);
     protected static final int DEFAULT_MAX_ATTEMPTS = 100;
     protected static final double COORDINATE_PRECISION = 1e-6;
-    protected static final String DEFAULT_BASE_URL = "http://localhost:8082/ors";
+    protected static final String DEFAULT_BASE_URL = "http://localhost:8082/gr";
 
     // 通用配置
     protected final String baseUrl;
@@ -108,7 +108,7 @@ public abstract class AbstractCoordinateGenerator {
         int status = response.getCode();
         if (status >= HttpStatus.SC_REDIRECTION) {
             if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Received error response: {}", new StatusLine(response));
+                LOGGER.debug("收到错误响应：{}", new StatusLine(response));
             }
             return null;
         }

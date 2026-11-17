@@ -32,15 +32,15 @@ public class RoutingAlgorithmLoadTest extends AbstractLoadTest {
 
     @Override
     protected void logConfigInfo() {
-        logger.info("Initializing RoutingAlgorithmLoadTest:");
-        logger.info("- Source files: {}", config.getSourceFiles());
-        logger.info("- Concurrent users: {}", config.getNumConcurrentUsers());
-        logger.info("- Execution mode: {}", config.isParallelExecution() ? "parallel" : "sequential");
+        logger.info("正在初始化 RoutingAlgorithmLoadTest：");
+        logger.info("- 数据源文件：{}", config.getSourceFiles());
+        logger.info("- 并发用户数：{}", config.getNumConcurrentUsers());
+        logger.info("- 执行模式：{}", config.isParallelExecution() ? "parallel" : "sequential");
     }
 
     @Override
     protected void logTestTypeInfo() {
-        logger.info("Testing directions");
+        logger.info("正在测试 directions 服务");
     }
 
     @Override
@@ -70,7 +70,7 @@ public class RoutingAlgorithmLoadTest extends AbstractLoadTest {
 
             AtomicInteger remainingRecords = new AtomicInteger(targetRecords.size());
 
-            logger.info("Scenario {}: Processing {} coordinates for profile {}", name, remainingRecords.get(),
+            logger.info("场景 {}：正在处理 {} 个坐标，profile 为 {}", name, remainingRecords.get(),
                     profile);
 
             return scenario(name)
@@ -79,7 +79,7 @@ public class RoutingAlgorithmLoadTest extends AbstractLoadTest {
                     .on(exec(createRequest(name, config, mode, profile)));
 
         } catch (IllegalStateException e) {
-            logger.error("Error building scenario: ", e);
+            logger.error("构建场景时出错：", e);
             System.exit(1);
             return null;
         }
@@ -87,7 +87,7 @@ public class RoutingAlgorithmLoadTest extends AbstractLoadTest {
 
     private static HttpRequestActionBuilder createRequest(String name, Config config, DirectionsModes mode, String profile) {
         return http(name)
-                .post("/v2/directions/" + profile)
+                .post("/directions/" + profile)
                 .body(StringBody(session -> createRequestBody(session, config, mode)))
                 .asJson()
                 .check(status().is(200));

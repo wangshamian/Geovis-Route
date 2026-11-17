@@ -170,14 +170,14 @@ public class LocationIndexTree implements LocationIndex {
         lineIntIndex.store(inMemConstructionIndex);
         lineIntIndex.setChecksum(checksum());
         flush();
-        logger.info("location index created in " + sw.stop().getSeconds()
-                + "s, size:" + Helper.nf(lineIntIndex.getSize())
-                + ", leafs:" + Helper.nf(lineIntIndex.getLeafs())
-                + ", precision:" + minResolutionInMeter
-                + ", depth:" + indexStructureInfo.getEntries().length
-                + ", checksum:" + checksum()
-                + ", entries:" + Arrays.toString(indexStructureInfo.getEntries())
-                + ", entriesPerLeaf:" + (float) lineIntIndex.getSize() / lineIntIndex.getLeafs());
+        logger.info("位置索引创建完成，耗时 " + sw.stop().getSeconds()
+                + " 秒, 大小:" + Helper.nf(lineIntIndex.getSize())
+                + ", 叶子数:" + Helper.nf(lineIntIndex.getLeafs())
+                + ", 精度:" + minResolutionInMeter
+                + ", 深度:" + indexStructureInfo.getEntries().length
+                + ", 校验和:" + checksum()
+                + ", 条目:" + Arrays.toString(indexStructureInfo.getEntries())
+                + ", 每个叶子的条目数:" + (float) lineIntIndex.getSize() / lineIntIndex.getLeafs());
 
         return this;
     }
@@ -211,7 +211,7 @@ public class LocationIndexTree implements LocationIndex {
                 inMem.addToAllTilesOnLine(edge, lat1, lon1, lat2, lon2);
             }
         } catch (Exception ex1) {
-            logger.error("Problem! base:" + allIter.getBaseNode() + ", adj:" + allIter.getAdjNode()
+            logger.error("出现问题! base:" + allIter.getBaseNode() + ", adj:" + allIter.getAdjNode()
                     + ", edge:" + allIter.getEdge(), ex1);
         }
         return inMem;

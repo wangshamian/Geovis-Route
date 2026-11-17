@@ -70,7 +70,7 @@ public class GraphProcessContext {
                 }
             }
         } catch (Exception ex) {
-            LOGGER.warning(ex.getMessage() + ". Way id = " + way.getId());
+            LOGGER.warning(ex.getMessage() + "。Way id = " + way.getId());
         }
     }
 
@@ -98,7 +98,7 @@ public class GraphProcessContext {
                 }
             }
         } catch (Exception ex) {
-            LOGGER.warning(ex.getMessage() + ". Way id = " + way.getId());
+            LOGGER.warning(ex.getMessage() + "。Way id = " + way.getId());
         }
     }
 

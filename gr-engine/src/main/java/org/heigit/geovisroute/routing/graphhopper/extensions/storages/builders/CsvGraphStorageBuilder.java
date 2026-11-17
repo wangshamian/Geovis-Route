@@ -65,7 +65,7 @@ public class CsvGraphStorageBuilder extends AbstractGraphStorageBuilder {
             // Header line
             String row = csvBuffer.readLine();
             columnNames = Arrays.stream(row.split(",")).skip(1).toArray(String[]::new);
-            LOGGER.info(columnNames.length + " CSV column names read: " + Arrays.toString(columnNames));
+            LOGGER.info("已读取 " + columnNames.length + " 个 CSV 列名: " + Arrays.toString(columnNames));
             // Body
             while ((row = csvBuffer.readLine()) != null) {
                 String[] idAndTail = row.split(",", 2);

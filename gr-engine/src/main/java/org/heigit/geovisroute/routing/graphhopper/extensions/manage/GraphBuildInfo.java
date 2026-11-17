@@ -31,7 +31,7 @@ public class GraphBuildInfo {
         try {
             this.remoteUri = url.toURI();
         } catch (URISyntaxException e) {
-            logger.error("Error while parsing remote URL %s with message %s".formatted(url, e.getMessage()));
+            logger.error("解析远程 URL %s 时出错，消息: %s".formatted(url, e.getMessage()));
             throw new GRGraphFileManagerExceptionException("Error while parsing remote URL %s.".formatted(url), e);
         }
         return this;

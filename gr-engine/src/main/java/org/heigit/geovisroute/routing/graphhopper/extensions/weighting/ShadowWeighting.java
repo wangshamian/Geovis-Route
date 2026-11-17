@@ -35,7 +35,7 @@ public class ShadowWeighting extends SpeedWeighting {
         _userWeighting = map.getDouble("factor", 1);
         _shadowIndexStorage = GraphStorageUtils.getGraphExtension(basegraph, ShadowIndexGraphStorage.class);
         if (_shadowIndexStorage == null) {
-            LOGGER.error("ShadowIndexStorage not found.");
+            LOGGER.error("未找到 ShadowIndexStorage。");
         }
     }
 

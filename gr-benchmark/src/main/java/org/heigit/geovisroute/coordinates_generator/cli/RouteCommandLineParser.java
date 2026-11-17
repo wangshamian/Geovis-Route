@@ -113,7 +113,7 @@ public class RouteCommandLineParser extends CommandLineParser {
         double[] extent = parseExtent(cmd.getOptionValue("e"));
 
         String[] profiles = parseProfiles(cmd.getOptionValue("p"));
-        String baseUrl = cmd.getOptionValue("u", "http://localhost:8080/ors");
+        String baseUrl = cmd.getOptionValue("u", "http://localhost:8080/gr");
         double minDistance = Double.parseDouble(cmd.getOptionValue("d", "1"));
 
         // 若提供则解析最大距离
@@ -123,7 +123,7 @@ public class RouteCommandLineParser extends CommandLineParser {
 
         if (LOGGER.isInfoEnabled()) {
             LOGGER.info(
-                    "Creating CoordinateGeneratorRoute with numRoutes={}, extent={}, profiles={}, baseUrl={}, minDistance={}, maxDistances={}, numThreads={}",
+                    "正在创建 CoordinateGeneratorRoute，numRoutes={}, extent={}, profiles={}, baseUrl={}, minDistance={}, maxDistances={}, numThreads={}",
                     numRoutes, extent, java.util.Arrays.toString(profiles), baseUrl, minDistance, maxDistanceByProfile,
                     numThreads);
         }
@@ -195,7 +195,7 @@ public class RouteCommandLineParser extends CommandLineParser {
                     double maxDistance = Double.parseDouble(maxDistances[i].trim());
                     maxDistanceByProfile.put(profiles[i], maxDistance);
                 } catch (NumberFormatException e) {
-                    LOGGER.warn("Invalid max distance for profile {}: {}", profiles[i], maxDistances[i]);
+                    LOGGER.warn("profile {} 的最大距离无效：{}", profiles[i], maxDistances[i]);
                 }
             }
         } else {

@@ -575,7 +575,7 @@ public class GraphHopper {
         setElevationProvider(elevationProvider);
 
         if (osmReaderConfig.getLongEdgeSamplingDistance() < Double.MAX_VALUE && !elevationProvider.canInterpolate())
-            logger.warn("Long edge sampling enabled, but bilinear interpolation disabled. See #1953");
+            logger.warn("已启用长边采样，但双线性插值已禁用。参见 #1953");
 
         // optimizable prepare
         minNetworkSize = ghConfig.getInt("prepare.min_network_size", minNetworkSize);
@@ -778,9 +778,9 @@ public class GraphHopper {
     }
 
     private void printInfo() {
-        logger.info("version " + Constants.VERSION + "|" + Constants.BUILD_DATE + " (" + Constants.getVersions() + ")");
+        logger.info("版本 " + Constants.VERSION + "|" + Constants.BUILD_DATE + " (" + Constants.getVersions() + ")");
         if (baseGraph != null)
-            logger.info("graph " + getBaseGraphString() + ", details:" + baseGraph.toDetailsString());
+            logger.info("图 " + getBaseGraphString() + ", 详情:" + baseGraph.toDetailsString());
     }
 
     private String getBaseGraphString() {
@@ -825,7 +825,7 @@ public class GraphHopper {
             process(true);
         } else {
             printInfo();
-            logger.info("Graph already imported into " + ghLocation);
+            logger.info("图已导入到 " + ghLocation);
         }
         close();
     }
@@ -951,25 +951,25 @@ public class GraphHopper {
 
         List<CustomArea> customAreas = readCountries();
         if (isEmpty(customAreasDirectory)) {
-            logger.info("No custom areas are used, custom_areas.directory not given");
+            logger.info("未使用自定义区域，未提供 custom_areas.directory");
         } else {
-            logger.info("Creating custom area index, reading custom areas from: '" + customAreasDirectory + "'");
+            logger.info("正在创建自定义区域索引，从以下位置读取自定义区域: '" + customAreasDirectory + "'");
             customAreas.addAll(readCustomAreas());
         }
 
         AreaIndex<CustomArea> areaIndex = new AreaIndex<>(customAreas);
         if (countryRuleFactory == null || countryRuleFactory.getCountryToRuleMap().isEmpty()) {
-            logger.info("No country rules available");
+            logger.info("没有可用的国家规则");
         } else {
-            logger.info("Applying rules for the following countries: {}", countryRuleFactory.getCountryToRuleMap().keySet());
+            logger.info("正在为以下国家应用规则: {}", countryRuleFactory.getCountryToRuleMap().keySet());
         }
 
-        logger.info("start creating graph from " + osmFile);
+        logger.info("开始从 " + osmFile + " 创建图");
         OSMReader reader = new OSMReader(baseGraph.getBaseGraph(), osmParsers, osmReaderConfig).setFile(_getOSMFile()).
                 setAreaIndex(areaIndex).
                 setElevationProvider(eleProvider).
                 setCountryRuleFactory(countryRuleFactory);
-        logger.info("using " + getBaseGraphString() + ", memory:" + getMemInfo());
+        logger.info("使用 " + getBaseGraphString() + ", 内存:" + getMemInfo());
 
         createBaseGraphAndProperties();
 
@@ -993,7 +993,7 @@ public class GraphHopper {
     }
 
     public static void sortGraphAlongHilbertCurve(BaseGraph graph) {
-        logger.info("sorting graph along Hilbert curve...");
+        logger.info("正在沿 Hilbert 曲线排序图...");
         StopWatch sw = StopWatch.started();
         NodeAccess na = graph.getNodeAccess();
         final int order = 31; // using 15 would allow us to use ints for sortIndices, but this would result in (marginally) slower routing
@@ -1016,7 +1016,7 @@ public class GraphHopper {
         }
         IntArrayList newEdgesByOldEdges = ArrayUtil.invert(edgeOrder);
         IntArrayList newNodesByOldNodes = IntArrayList.from(ArrayUtil.invert(nodeOrder));
-        logger.info("calculating sort order took: " + sw.stop().getTimeString());
+        logger.info("计算排序顺序耗时: " + sw.stop().getTimeString());
         sortGraphForGivenOrdering(graph, newNodesByOldNodes, newEdgesByOldEdges);
     }
 
@@ -1025,13 +1025,13 @@ public class GraphHopper {
             throw new IllegalStateException("New edges: not a permutation");
         if (!ArrayUtil.isPermutation(newNodesByOldNodes))
             throw new IllegalStateException("New nodes: not a permutation");
-        logger.info("sort graph for fixed ordering...");
+        logger.info("按固定顺序排序图...");
         StopWatch sw = new StopWatch().start();
         baseGraph.sortEdges(newEdgesByOldEdges::get);
-        logger.info("sorting {} edges took: {}", Helper.nf(newEdgesByOldEdges.size()), sw.stop().getTimeString());
+        logger.info("排序 {} 条边耗时: {}", Helper.nf(newEdgesByOldEdges.size()), sw.stop().getTimeString());
         sw = new StopWatch().start();
         baseGraph.relabelNodes(newNodesByOldNodes::get);
-        logger.info("sorting {} nodes took: {}", Helper.nf(newNodesByOldNodes.size()), sw.stop().getTimeString());
+        logger.info("排序 {} 个节点耗时: {}", Helper.nf(newNodesByOldNodes.size()), sw.stop().getTimeString());
     }
 
     public static long latLonToHilbertIndex(double lat, double lon, int order) {
@@ -1330,7 +1330,7 @@ public class GraphHopper {
             // See #2098 for mor information
             sw = new StopWatch().start();
             new EdgeElevationInterpolator(baseGraph.getBaseGraph(), roadEnvEnc, RoadEnvironment.FERRY).execute();
-            logger.info("Bridge interpolation " + (int) bridge + "s, " + "tunnel interpolation " + (int) tunnel + "s, ferry interpolation " + (int) sw.stop().getSeconds() + "s");
+            logger.info("桥梁插值 " + (int) bridge + " 秒, " + "隧道插值 " + (int) tunnel + " 秒, 轮渡插值 " + (int) sw.stop().getSeconds() + " 秒");
         }
     }
 
@@ -1384,7 +1384,7 @@ public class GraphHopper {
 
     private void calcChecksums() {
         if (!calcChecksums) return;
-        logger.info("Calculating checksums for {} profiles", profilesByName.size());
+        logger.info("正在计算 {} 个 profile 的校验和", profilesByName.size());
         StopWatch sw = StopWatch.started();
         double[] checksums_fwd = new double[profilesByName.size()];
         double[] checksums_bwd = new double[profilesByName.size()];
@@ -1410,7 +1410,7 @@ public class GraphHopper {
             logger.info("checksum.bwd." + profile.getName() + ": " + checksums_bwd[index]);
             index++;
         }
-        logger.info("Calculating checksums took: " + sw.stop().getTimeString());
+        logger.info("计算校验和耗时: " + sw.stop().getTimeString());
     }
 
     /**
@@ -1540,7 +1540,7 @@ public class GraphHopper {
         preparation.setMinNetworkSize(minNetworkSize);
         preparation.setThreads(subnetworksThreads);
         preparation.doWork();
-        logger.info("nodes: " + Helper.nf(baseGraph.getNodes()) + ", edges: " + Helper.nf(baseGraph.getEdges()));
+        logger.info("节点: " + Helper.nf(baseGraph.getNodes()) + ", 边: " + Helper.nf(baseGraph.getEdges()));
     }
 
     private List<PrepareJob> buildSubnetworkRemovalJobs() {
@@ -1554,11 +1554,11 @@ public class GraphHopper {
     }
 
     protected void flush() {
-        logger.info("flushing graph " + getBaseGraphString() + ", details:" + baseGraph.toDetailsString() + ", "
+        logger.info("正在刷写图 " + getBaseGraphString() + ", 详情:" + baseGraph.toDetailsString() + ", "
                 + getMemInfo() + ")");
         baseGraph.flush();
         properties.flush();
-        logger.info("flushed graph " + getMemInfo() + ")");
+        logger.info("已刷写图 " + getMemInfo() + ")");
         setFullyLoaded();
     }
 
@@ -1637,7 +1637,7 @@ public class GraphHopper {
                                 throw new UncheckedIOException(e);
                             }
                         });
-                logger.info("Will make " + globalAreas.getFeatures().size() + " areas available to all custom profiles. Found in " + customAreasDirectory);
+                logger.info("将使 " + globalAreas.getFeatures().size() + " 个区域对所有自定义 profile 可用。来源: " + customAreasDirectory);
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
             }

@@ -124,7 +124,7 @@ public abstract class AbstractTiffElevationProvider extends TileBasedElevationPr
             try {
                 loadExisting = heights.loadExisting();
             } catch (Exception ex) {
-                logger.warn("cannot load " + name + ", error: " + ex.getMessage());
+                logger.warn("无法加载 " + name + ", 错误: " + ex.getMessage());
             }
 
             if (!loadExisting) {

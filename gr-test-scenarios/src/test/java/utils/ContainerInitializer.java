@@ -52,9 +52,9 @@ public abstract class ContainerInitializer {
      */
     public static void initializeContainers() {
         containerValue = System.getProperty("container.run.scenario", "all");
-        parentLogger.info("Container scenario: {}", containerValue);
+        parentLogger.info("容器场景：{}", containerValue);
         shareGraphsWithContainer = Boolean.parseBoolean(System.getProperty("container.run.share_graphs", "true"));
-        parentLogger.info("Share graphs with container: {}", shareGraphsWithContainer);
+        parentLogger.info("是否与容器共享图：{}", shareGraphsWithContainer);
         switch (containerValue) {
             case "war":
                 selectedDefaultContainers = List.of(ContainerTestImageDefaults.WAR_CONTAINER);
@@ -174,7 +174,7 @@ public abstract class ContainerInitializer {
         } else if (containerTestImage == ContainerTestImageBare.JAR_CONTAINER_BARE || containerTestImage == ContainerTestImageDefaults.JAR_CONTAINER) {
             dockerFile = "jar.Dockerfile";
         } else {
-            parentLogger.error("Container image not recognized. Exiting.");
+            parentLogger.error("容器镜像无法识别，正在退出。");
             System.exit(1);
         }
 
@@ -212,10 +212,10 @@ public abstract class ContainerInitializer {
     }
 
     static void buildBuilderImages() {
-        parentLogger.info("Starting builder image initialization");
+        parentLogger.info("开始初始化构建镜像");
         try {
             // Initialize the base builder first
-            parentLogger.info("Initializing base builder image");
+            parentLogger.info("正在初始化基础构建镜像");
             initBuilderImage(ContainterBuildStage.ORS_TEST_SCENARIO_BUILDER);
 
             // Create a list to store all futures for better tracking
@@ -224,36 +224,36 @@ public abstract class ContainerInitializer {
             // Asynchronous start the rest with proper error handling for each
             CompletableFuture<Void> warFuture = CompletableFuture
                     .runAsync(() -> {
-                        parentLogger.info("Starting WAR builder image initialization");
+                        parentLogger.info("开始初始化 WAR 构建镜像");
                         initBuilderImage(ContainterBuildStage.ORS_TEST_SCENARIO_WAR_BUILDER);
-                        parentLogger.info("WAR builder image initialized successfully");
+                        parentLogger.info("WAR 构建镜像初始化成功");
                     })
                     .exceptionally(ex -> {
-                        parentLogger.error("Failed to initialize WAR builder image: {}", ex.getMessage(), ex);
+                        parentLogger.error("初始化 WAR 构建镜像失败：{}", ex.getMessage(), ex);
                         throw new RuntimeException("WAR builder initialization failed", ex);
                     });
             buildFutures.add(warFuture);
 
             CompletableFuture<Void> jarFuture = CompletableFuture
                     .runAsync(() -> {
-                        parentLogger.info("Starting JAR builder image initialization");
+                        parentLogger.info("开始初始化 JAR 构建镜像");
                         initBuilderImage(ContainterBuildStage.ORS_TEST_SCENARIO_JAR_BUILDER);
-                        parentLogger.info("JAR builder image initialized successfully");
+                        parentLogger.info("JAR 构建镜像初始化成功");
                     })
                     .exceptionally(ex -> {
-                        parentLogger.error("Failed to initialize JAR builder image: {}", ex.getMessage(), ex);
+                        parentLogger.error("初始化 JAR 构建镜像失败：{}", ex.getMessage(), ex);
                         throw new RuntimeException("JAR builder initialization failed", ex);
                     });
             buildFutures.add(jarFuture);
 
             CompletableFuture<Void> mavenFuture = CompletableFuture
                     .runAsync(() -> {
-                        parentLogger.info("Starting MAVEN builder image initialization");
+                        parentLogger.info("开始初始化 MAVEN 构建镜像");
                         initBuilderImage(ContainterBuildStage.ORS_TEST_SCENARIO_MAVEN_BUILDER);
-                        parentLogger.info("MAVEN builder image initialized successfully");
+                        parentLogger.info("MAVEN 构建镜像初始化成功");
                     })
                     .exceptionally(ex -> {
-                        parentLogger.error("Failed to initialize MAVEN builder image: {}", ex.getMessage(), ex);
+                        parentLogger.error("初始化 MAVEN 构建镜像失败：{}", ex.getMessage(), ex);
                         throw new RuntimeException("MAVEN builder initialization failed", ex);
                     });
             buildFutures.add(mavenFuture);
@@ -264,9 +264,9 @@ public abstract class ContainerInitializer {
                     .orTimeout(5, java.util.concurrent.TimeUnit.MINUTES)
                     .join();
 
-            parentLogger.info("All builder images initialized successfully");
+            parentLogger.info("所有构建镜像初始化成功");
         } catch (Exception e) {
-            parentLogger.error("Failed to initialize builder images: {}", e.getMessage(), e);
+            parentLogger.error("初始化构建镜像失败：{}", e.getMessage(), e);
             throw new RuntimeException("Builder images initialization failed", e);
         }
     }
@@ -275,11 +275,11 @@ public abstract class ContainerInitializer {
     public static void buildSharedLayersAndGraphs() throws IOException, InterruptedException {
         initializeContainers();
         if (!Boolean.parseBoolean(System.getProperty("container.builder.use_prebuild", "false"))) {
-            parentLogger.info("container.builder.use_prebuild is set to false. Building builder images.");
+            parentLogger.info("container.builder.use_prebuild 设置为 false，正在构建构建镜像。");
             buildBuilderImages();
         } else {
             // The GitHub workflows build the images externally and caches them for the tests.
-            parentLogger.warn("container.builder.use_prebuild is set to true. Skipping builder images.");
+            parentLogger.warn("container.builder.use_prebuild 设置为 true，正在跳过构建镜像。");
         }
 
         List<String> expectedGraphFolders = List.of("bobby-car", "cycling-electric", "cycling-mountain", "cycling-regular", "cycling-road", "driving-car", "driving-hgv", "foot-hiking", "foot-walking", "wheelchair");
@@ -298,7 +298,7 @@ public abstract class ContainerInitializer {
             container = initContainer(ContainerTestImageBare.WAR_CONTAINER_BARE, false, hostSharedGraphPath.getFileName().toString(), false, Duration.ofSeconds(300));
             container.setCommand(ContainerTestImageBare.WAR_CONTAINER_BARE.getCommand("500M").toArray(new String[0]));
         } else {
-            parentLogger.error("Container scenario not set to either all, jar, maven or war. Exiting.");
+            parentLogger.error("容器场景未设置为 all、jar、maven 或 war 之一，正在退出。");
         }
         container.addEnv("ors.engine.profile_default.enabled", "true");
         container.addEnv("ors.engine.profiles.public-transport.enabled", "false");

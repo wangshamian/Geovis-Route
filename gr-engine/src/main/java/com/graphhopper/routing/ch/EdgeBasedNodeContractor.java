@@ -128,7 +128,7 @@ class EdgeBasedNodeContractor implements NodeContractor {
                 params.originalEdgeQuotientWeight * origEdgeQuotient +
                 params.hierarchyDepthWeight * hierarchyDepth;
         if (LOGGER.isTraceEnabled())
-            LOGGER.trace("node: {}, eq: {} / {} = {}, oeq: {} / {} = {}, depth: {} --> {}",
+            LOGGER.trace("节点: {}, eq: {} / {} = {}, oeq: {} / {} = {}, 深度: {} --> {}",
                     node,
                     numShortcuts, numPrevEdges, edgeQuotient,
                     numOrigEdges, numPrevOrigEdges, origEdgeQuotient,
@@ -218,7 +218,7 @@ class EdgeBasedNodeContractor implements NodeContractor {
                         continue;
                     double initialTurnCost = prepareGraph.getTurnWeight(origInKey, sourceNode, root.firstEdgeKey);
                     bridgePath.value.chEntry.weight -= initialTurnCost;
-                    LOGGER.trace("Adding shortcuts for target entry {}", bridgePath.value.chEntry);
+                    LOGGER.trace("正在为目标入口 {} 添加 shortcut", bridgePath.value.chEntry);
                     // todo: re-implement loop-avoidance heuristic as it existed in GH 1.0? it did not work the
                     //       way it was implemented so it was removed at some point
                     shortcutHandler.handleShortcut(root, bridgePath.value.chEntry, bridgePath.value.chEntry.origEdges);
@@ -340,7 +340,7 @@ class EdgeBasedNodeContractor implements NodeContractor {
 
         // our shortcut is new --> add it
         int origFirstKey = edgeFrom.firstEdgeKey;
-        LOGGER.trace("Adding shortcut from {} to {}, weight: {}, firstOrigEdgeKey: {}, lastOrigEdgeKey: {}",
+        LOGGER.trace("正在添加从 {} 到 {} 的 shortcut，权重: {}, firstOrigEdgeKey: {}, lastOrigEdgeKey: {}",
                 from, adjNode, edgeTo.weight, origFirstKey, edgeTo.incEdgeKey);
         int prepareEdge = prepareGraph.addShortcut(from, adjNode, origFirstKey, edgeTo.incEdgeKey, edgeFrom.prepareEdge, edgeTo.prepareEdge, edgeTo.weight, origEdgeCount);
         // does not matter here

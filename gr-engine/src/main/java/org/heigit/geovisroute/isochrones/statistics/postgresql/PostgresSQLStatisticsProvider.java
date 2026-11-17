@@ -73,7 +73,7 @@ public class PostgresSQLStatisticsProvider implements StatisticsProvider {
 
         value = (String) parameters.get("postgis_version");
         if (Helper.isEmpty(value))
-            LOGGER.debug("No PostGIS version provided");
+            LOGGER.debug("未提供 PostGIS 版本");
         else
             postgisVersion = value;
 

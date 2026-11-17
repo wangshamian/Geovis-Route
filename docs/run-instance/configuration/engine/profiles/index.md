@@ -7,7 +7,7 @@ limited by the available memory on the system.
 
 Each profile has a **profile name** (the key in this map),
 which is used as _path parameter_ in the API
-(directions request for profile `truck`: `http://.../ors/v2/directions/truck/json`)
+(directions request for profile `truck`: `http://.../gr/directions/truck/json`)
 and also as _directory name_ for the profile's routing graph.
 Note that the profile name can be chosen freely
 but cannot contain special characters that cannot be used for directory names on your operating system.

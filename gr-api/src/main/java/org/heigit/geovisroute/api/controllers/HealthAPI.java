@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @Tag(name = "Health service", description = "获取 API 的健康状态信息")
-@RequestMapping("/v2/health")
+@RequestMapping("/health")
 public class HealthAPI {
     @GetMapping
     public ResponseEntity<?> fetchHealth() {

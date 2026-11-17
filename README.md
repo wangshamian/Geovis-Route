@@ -80,13 +80,13 @@ docker compose down
 
 The above mentioned endpoints will be available on port 8080:
 
-- `http://localhost:8080/ors/v2/directions`
-- `http://localhost:8080/ors/v2/isochrones`
-- `http://localhost:8080/ors/v2/matrix`
-- `http://localhost:8080/ors/v2/snap`
-- `http://localhost:8080/ors/v2/export`
-- `http://localhost:8080/ors/v2/health`
-- `http://localhost:8080/ors/v2/status`
+- `http://localhost:8080/gr/directions`
+- `http://localhost:8080/gr/isochrones`
+- `http://localhost:8080/gr/matrix`
+- `http://localhost:8080/gr/snap`
+- `http://localhost:8080/gr/export`
+- `http://localhost:8080/gr/health`
+- `http://localhost:8080/gr/status`
 
 You can find more information in the endpoint documentation pages linked above.
 

@@ -30,7 +30,7 @@ public abstract class AbstractLoadTest extends Simulation {
                 executeSequentialScenarios();
             }
         } catch (Exception e) {
-            logger.error("Failed to initialize Gatling simulation: {}", e.getMessage());
+            logger.error("初始化 Gatling 模拟失败：{}", e.getMessage());
             System.exit(1);
         }
     }
@@ -66,7 +66,7 @@ public abstract class AbstractLoadTest extends Simulation {
 
     @Override
     public void before() {
-        logger.info("Starting Gatling simulation...");
+        logger.info("正在启动 Gatling 模拟...");
         logTestTypeInfo();
     }
 
@@ -74,6 +74,6 @@ public abstract class AbstractLoadTest extends Simulation {
 
     @Override
     public void after() {
-        logger.info("Gatling simulation completed.");
+        logger.info("Gatling 模拟已完成。");
     }
 }

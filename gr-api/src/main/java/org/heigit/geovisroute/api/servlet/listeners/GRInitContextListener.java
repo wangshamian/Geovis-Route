@@ -56,22 +56,22 @@ public class GRInitContextListener implements ServletContextListener {
         }
         new Thread(() -> {
             try {
-                LOGGER.info("Initializing ORS...");
+                LOGGER.info("正在初始化 ORS...");
                 graphService.setIsActivatingGraphs(true);
                 RoutingProfileManager routingProfileManager = new RoutingProfileManager(engineProperties, AppInfo.GRAPH_VERSION);
                 for (RoutingProfile profile : routingProfileManager.getUniqueProfiles()) {
                     GRGraphManager orsGraphManager = profile.getGraphhopper().getOrsGraphManager();
                     if (orsGraphManager != null && orsGraphManager.useGraphRepository()) {
-                        LOGGER.debug("Adding orsGraphManager for profile %s with encoder %s to GraphService".formatted(profile.getProfileConfiguration().getProfileName(), profile.getProfileConfiguration().getEncoderName()));
+                        LOGGER.debug("正在将 profile %s（encoder 为 %s）的 orsGraphManager 添加到 GraphService".formatted(profile.getProfileConfiguration().getProfileName(), profile.getProfileConfiguration().getEncoderName()));
                         graphService.addGraphManagerInstance(orsGraphManager);
                     }
                 }
                 if (Boolean.TRUE.equals(engineProperties.getPreparationMode())) {
-                    LOGGER.info("Running in preparation mode, all enabled graphs are built, job is done.");
+                    LOGGER.info("当前为 preparation 模式，所有已启用的图均已构建完成，任务结束。");
                     System.exit(RoutingProfileManagerStatus.hasFailed() ? 1 : 0);
                 }
             } catch (Exception e) {
-                LOGGER.warn("Unable to initialize ORS due to an unexpected exception: " + e);
+                LOGGER.warn("由于未预期的异常，ORS 初始化失败：" + e);
             } finally {
                 graphService.setIsActivatingGraphs(false);
             }
@@ -89,19 +89,19 @@ public class GRInitContextListener implements ServletContextListener {
 
     private void copyDefaultConfigurationToFile(String output) {
         try (FileOutputStream fos = new FileOutputStream(output)) {
-            LOGGER.info("Creating configuration file " + output);
+            LOGGER.info("正在创建配置文件 " + output);
             fos.write(new ClassPathResource("application.yml").getContentAsString(StandardCharsets.UTF_8).getBytes());
         } catch (IOException e) {
-            LOGGER.error("Failed to write output configuration file.", e);
+            LOGGER.error("写入输出配置文件失败。", e);
         }
-        LOGGER.info("Configuration output completed.");
+        LOGGER.info("配置输出完成。");
         RoutingProfileManagerStatus.setShutdown(true);
     }
 
     @Override
     public void contextDestroyed(ServletContextEvent contextEvent) {
         try {
-            LOGGER.info("Shutting down openrouteservice %s and releasing resources.".formatted(AppInfo.getEngineInfo()));
+            LOGGER.info("正在关闭 openrouteservice %s 并释放资源。".formatted(AppInfo.getEngineInfo()));
             FormatUtility.unload();
             if (RoutingProfileManagerStatus.isReady())
                 RoutingProfileManager.getInstance().destroy();

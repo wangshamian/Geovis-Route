@@ -97,7 +97,7 @@ public class MatrixCommandLineParser extends CommandLineParser {
                 .longOpt("base-url")
                 .hasArg()
                 .argName("URL")
-                .desc("Base URL for ORS API (default: http://localhost:8080/ors)")
+                .desc("Base URL for ORS API (default: http://localhost:8080/gr)")
                 .build());
     }
 
@@ -135,7 +135,7 @@ public class MatrixCommandLineParser extends CommandLineParser {
         int numMatrices = Integer.parseInt(cmd.getOptionValue(OPT_NUM_MATRICES, "100"));
         double[] extent = parseExtent(cmd.getOptionValue(OPT_EXTENT));
         String[] profiles = parseProfiles(cmd.getOptionValue(OPT_PROFILES));
-        String baseUrl = cmd.getOptionValue(OPT_BASE_URL, "http://localhost:8080/ors");
+        String baseUrl = cmd.getOptionValue(OPT_BASE_URL, "http://localhost:8080/gr");
         Map<String, Double> maxDistanceByProfile = parseMaxDistanceMap(cmd.getOptionValue(OPT_MAX_DISTANCE, ""),
                 profiles);
 
