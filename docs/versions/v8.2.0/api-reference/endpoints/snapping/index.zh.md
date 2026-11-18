@@ -18,7 +18,7 @@ snapping 端点可用于将点吸附到街道网络中与特定交通方式相�
 请求：
 ```shell
 curl -X 'POST' \
-  'http://localhost:8082/ors/v2/snap/driving-car/json' \
+  'http://localhost:8082/gr/snap/driving-car/json' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{

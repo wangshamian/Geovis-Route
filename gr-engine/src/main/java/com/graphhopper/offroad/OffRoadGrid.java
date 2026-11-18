@@ -27,6 +27,14 @@ public class OffRoadGrid {
      */
     protected boolean blocked;
     /**
+     * 地表类型对越野速度的折减系数（WorldCover），1.0 表示不折减。
+     */
+    protected double surfaceFactor = 1.0;
+    /**
+     * 地表类型名称（如「林地」「建成区」），null 表示无地表分类信息。
+     */
+    protected String surfaceLabel;
+    /**
      * 网格中心附近公路的通行速度（km/h），0 表示该网格不在公路上。
      */
     protected double roadSpeedKmh = 0;

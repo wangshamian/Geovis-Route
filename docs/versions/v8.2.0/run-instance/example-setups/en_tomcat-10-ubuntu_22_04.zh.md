@@ -183,7 +183,7 @@ WantedBy=multi-user.target
 > sudo systemctl status openrouteservice.service
 ```
 
-如果你访问 `http://localhost:8080/ors/v2/health`，你应该会看到 openrouteservice 的健康状态。
+如果你访问 `http://localhost:8080/gr/health`，你应该会看到 openrouteservice 的健康状态。
 输出将如下所示：
 
 ```json
@@ -278,11 +278,11 @@ export JAVA_OPTS="$JAVA_OPTS \
 现在 openrouteservice 已使用正确的配置设置完成，请检查
 `/opt/openrouteservice/logs/ors.log` 中的日志文件或 `/opt/tomcat/logs` 目录中的 Tomcat 日志文件。
 
-在浏览器中访问 [http://localhost:8080/ors/v2/health](http://localhost:8080/ors/v2/health) 以查看 openrouteservice 的健康状态，或
+在浏览器中访问 [http://localhost:8080/gr/health](http://localhost:8080/gr/health) 以查看 openrouteservice 的健康状态，或
 向 API 发起请求。
 
 ```shell
-> curl http://localhost:8080/ors/v2/health
+> curl http://localhost:8080/gr/health
 ```
 
 输出应如下所示：
@@ -302,14 +302,14 @@ export JAVA_OPTS="$JAVA_OPTS \
 ```shell
 # Request a route from A to B withing Andorra
 > curl -X POST \
-  'http://localhost:8080/ors/v2/directions/driving-car' \
+  'http://localhost:8080/gr/directions/driving-car' \
   -H 'Content-Type: application/json; charset=utf-8' \
   -H 'Accept: application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8' \
   -d '{"coordinates":[[1.5036892890930176, 42.4972256361276],[1.6298711299896242, 42.57831077271361]]}'
 
 # Request an Isochrone from a point in Andorra
 > curl -X POST \
-  'http://localhost:8080/ors/v2/isochrones/driving-car' \
+  'http://localhost:8080/gr/isochrones/driving-car' \
   -H 'Content-Type: application/json; charset=utf-8' \
   -H 'Accept: application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8' \
   -d '{"locations":[[1.5036892890930176, 42.4972256361276]],"range":[300]}'

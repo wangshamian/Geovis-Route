@@ -4,14 +4,14 @@
 
 There are four POST directions requests that all accept the same request body and differ only in the result types, specified by the last path parameter:
 
-    POST /v2/directions/{profile}            <- returns JSON
-    POST /v2/directions/{profile}/json
-    POST /v2/directions/{profile}/geojson
-    POST /v2/directions/{profile}/gpx
+    POST directions/{profile}            <- returns JSON
+    POST directions/{profile}/json
+    POST directions/{profile}/geojson
+    POST directions/{profile}/gpx
 
 Additionally, there is one simple GET request that does not allow advanced request options. It returns GeoJSON:
 
-    GET  /v2/directions/{profile}            <- returns GeoJSON
+    GET  directions/{profile}            <- returns GeoJSON
 
 
 ## Return Types
@@ -22,7 +22,7 @@ The **JSON** return type is best suited for further processing.
 
 ### GPX
 
-The **GPX** return type is an XML dialect from openrouteservice based on the [GPS Exchange Format](https://www.topografix.com/gpx.asp) with an own [XML Schema](https://raw.githubusercontent.com/GIScience/openrouteservice-schema/main/gpx/v2/ors-gpx.xsd).
+The **GPX** return type is an XML dialect from openrouteservice based on the [GPS Exchange Format](https://www.topografix.com/gpx.asp) with an own [XML Schema](https://raw.githubusercontent.com/GIScience/openrouteservice-schema/main/gpxors-gpx.xsd).
 It is a very old standard for lightweight interchange of GPS data and thus being used by hundreds of software programs and Web services.
 
 ### GeoJSON

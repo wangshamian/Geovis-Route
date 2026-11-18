@@ -5,8 +5,8 @@ Soon (30th October, 2020), the V1 openrouteservice API will be getting switched 
 * **The URL is structured in a way that makes it easier to request different response data types and see what profile you are querying**
 
 So how do you switch from V1 to V2 API? The biggest difference is that the main request information needs to go in the body of the request, and the request made as a POST method. The body itself is a nice JSON format, and makes use of true arrays rather than the piped (|) list in the V1 GET method. Also, the URL itself has been modified to be the format of:
-`https://api.openrouteservice.org/v2/{endpoint}/{profile}`
-where `{endpoint}` is one of `directions`, `isochrones`, or `matrix`, and `{profile}` is the profile you want to get the route for. In addition, the `directions` endpoint can also have the response data format added after the profile, for example `https://api.openrouteservice.org/v2/directions/driving-car/{response-format}` where `{response-format}` is one of `json`, `geojson`, or `gpx`.
+`https://api.openrouteservice.org{endpoint}/{profile}`
+where `{endpoint}` is one of `directions`, `isochrones`, or `matrix`, and `{profile}` is the profile you want to get the route for. In addition, the `directions` endpoint can also have the response data format added after the profile, for example `https://api.openrouteservice.orgdirections/driving-car/{response-format}` where `{response-format}` is one of `json`, `geojson`, or `gpx`.
 
 **Please note that it is only the `directions`, `isochrones`, and `matrix` endpoints that use the V2 API. All other endpoints (e.g. geocoding) remain the same as before!**
 
@@ -24,7 +24,7 @@ or in it's encoded form
 
 Using the V2 API, the same request would be as follows:
 
-`https://api.openrouteservice.org/v2/directions/driving-car/geojson?api_key=xxx`
+`https://api.openrouteservice.orgdirections/driving-car/geojson?api_key=xxx`
 
 with the POST body being:
 
@@ -52,7 +52,7 @@ For the Isochrones endpoint, to request pedestrian isochrones for 2 locations up
 
 In V2 API, it would be done as follows (again as a POST):
 
-`https://api.openrouteservice.org/v2/isochrones/foot-walking?api_key=xxx`
+`https://api.openrouteservice.orgisochrones/foot-walking?api_key=xxx`
 
 with the following body:
 
@@ -80,7 +80,7 @@ or in its encoded form:
 
 For the same request in V2, you would use the following POST request:
 
-`https://api.openrouteservice.org/v2/matrix/driving-hgv?api_key=xxx`
+`https://api.openrouteservice.orgmatrix/driving-hgv?api_key=xxx`
 
 ```json
 {

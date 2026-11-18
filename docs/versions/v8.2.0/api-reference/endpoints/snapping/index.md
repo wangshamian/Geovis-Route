@@ -18,7 +18,7 @@ and therefore the first entry in the result `locations` is `null`.
 Request:
 ```shell
 curl -X 'POST' \
-  'http://localhost:8082/ors/v2/snap/driving-car/json' \
+  'http://localhost:8082/gr/snap/driving-car/json' \
   -H 'accept: application/json' \
   -H 'Content-Type: application/json' \
   -d '{

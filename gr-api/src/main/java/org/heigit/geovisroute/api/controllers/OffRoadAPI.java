@@ -52,7 +52,7 @@ import java.util.Map;
 public class OffRoadAPI {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OffRoadAPI.class);
-    private static final double DEFAULT_GRID_INTERVAL = 300;
+    private static final double DEFAULT_GRID_INTERVAL = 50;
     private static final double MIN_GRID_INTERVAL = 10;
     private static final double MAX_GRID_INTERVAL = 1000;
     private static final double DEFAULT_MAX_SLOPE = 20;
@@ -376,6 +376,10 @@ public class OffRoadAPI {
         result.put("point_count", coordinates.size());
         // 纯越野路径沿途的地表构成，按里程从多到少
         result.put("surfaces", toSurfaceItems(offRoadResponse.getPathSurfaces()));
+        if (!hybrid) {
+            // 地形时间线：从起点算起何时进入何种地形、实际速度、该地形走了多远
+            result.put("surface_timeline", toTerrainItems(offRoadResponse.getPathTerrain()));
+        }
         result.put("summary", buildSummary(distance, elevation, offRoadResponse, speedKmh, hybrid));
         if (coordinates.isEmpty()) {
             // 无可行路径时给出可操作的提示，便于前端直接展示
@@ -411,8 +415,10 @@ public class OffRoadAPI {
             double total = roadDistance + offRoadDistance;
             summary.put("road_ratio", total > 0 ? round1(roadDistance / total * 100) : 0.0);
         } else {
-            // 按所选交通工具的平均速度估算耗时（秒）
-            summary.put("duration", Math.round(distance / (speedKmh / 3.6)));
+            // 纯越野的耗时为搜索累计值，已包含坡度与地表类型导致的速度折减
+            summary.put("duration", response.getDurationSeconds() > 0
+                    ? response.getDurationSeconds()
+                    : Math.round(distance / (speedKmh / 3.6)));
         }
         summary.put("max_slope", elevation == null ? null : elevation.get("max_slope"));
         summary.put("avg_slope", elevation == null ? null : elevation.get("avg_slope"));
@@ -438,6 +444,30 @@ public class OffRoadAPI {
             item.put("label", surface.getLabel());
             item.put("distance", Math.round(surface.getDistance()));
             item.put("speed_factor", surface.getSpeedFactor());
+            items.add(item);
+        }
+        return items;
+    }
+
+    /**
+     * 地形时间线转成前端展示结构：地形名称、起始时间（秒）、耗时、里程与实际速度。
+     */
+    private List<Map<String, Object>> toTerrainItems(List<OffRoadResponse.TerrainSlice> terrain) {
+        List<Map<String, Object>> items = new ArrayList<>();
+        if (terrain == null) {
+            return items;
+        }
+        int index = 0;
+        for (OffRoadResponse.TerrainSlice slice : terrain) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("index", ++index);
+            item.put("label", slice.getLabel());
+            item.put("start_distance", Math.round(slice.getStartDistance()));
+            item.put("start_time", Math.round(slice.getStartSeconds()));
+            item.put("duration", Math.round(slice.getDuration()));
+            item.put("distance", Math.round(slice.getDistance()));
+            item.put("speed_kmh", round1(slice.getSpeedKmh()));
+            item.put("speed_factor", slice.getSpeedFactor());
             items.add(item);
         }
         return items;

@@ -10,7 +10,7 @@ hero:
           link: ./getting-started
         - theme: alt
           text: API Playground
-          link: https://openrouteservice.org/dev/#/api-docs/v2/directions/{profile}/post
+          link: https://openrouteservice.org/dev/#/api-docsdirections/{profile}/post
         - theme: alt
           text: Contributing
           link: ./contributing/

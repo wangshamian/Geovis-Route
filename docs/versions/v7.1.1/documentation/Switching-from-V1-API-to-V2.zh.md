@@ -5,8 +5,8 @@
 * **URL 的结构更便于请求不同的响应数据类型，也便于看出你正在查询哪个 profile**
 
 那么如何从 V1 切换到 V2 API 呢？最大的区别在于，主要的请求信息需要放在请求体中，并且请求要以 POST 方式发出。请求体本身是简洁的 JSON 格式，使用真正的数组，而不再是 V1 GET 方法中用竖线（|）分隔的列表。此外，URL 本身也改成如下格式：
-`https://api.openrouteservice.org/v2/{endpoint}/{profile}`
-其中 `{endpoint}` 是 `directions`、`isochrones` 或 `matrix` 之一，`{profile}` 是你要为其获取路线的 profile。另外，`directions` 端点还可以在 profile 之后加上响应数据格式，例如 `https://api.openrouteservice.org/v2/directions/driving-car/{response-format}`，其中 `{response-format}` 是 `json`、`geojson` 或 `gpx` 之一。
+`https://api.openrouteservice.org{endpoint}/{profile}`
+其中 `{endpoint}` 是 `directions`、`isochrones` 或 `matrix` 之一，`{profile}` 是你要为其获取路线的 profile。另外，`directions` 端点还可以在 profile 之后加上响应数据格式，例如 `https://api.openrouteservice.orgdirections/driving-car/{response-format}`，其中 `{response-format}` 是 `json`、`geojson` 或 `gpx` 之一。
 
 **请注意，只有 `directions`、`isochrones` 和 `matrix` 端点使用 V2 API。其他所有端点（例如 geocoding）都与此前保持一致！**
 
@@ -24,7 +24,7 @@
 
 使用 V2 API，同样的请求如下：
 
-`https://api.openrouteservice.org/v2/directions/driving-car/geojson?api_key=xxx`
+`https://api.openrouteservice.orgdirections/driving-car/geojson?api_key=xxx`
 
 POST 请求体为：
 
@@ -52,7 +52,7 @@ POST 请求体为：
 
 在 V2 API 中，做法如下（同样以 POST 方式）：
 
-`https://api.openrouteservice.org/v2/isochrones/foot-walking?api_key=xxx`
+`https://api.openrouteservice.orgisochrones/foot-walking?api_key=xxx`
 
 请求体如下：
 
@@ -80,7 +80,7 @@ POST 请求体为：
 
 在 V2 中，同样的请求应使用以下 POST 请求：
 
-`https://api.openrouteservice.org/v2/matrix/driving-hgv?api_key=xxx`
+`https://api.openrouteservice.orgmatrix/driving-hgv?api_key=xxx`
 
 ```json
 {

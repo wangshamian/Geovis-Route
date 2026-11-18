@@ -184,7 +184,7 @@ the latest release WAR-File.
 > sudo systemctl status openrouteservice.service
 ```
 
-If you navigate to `http://localhost:8080/ors/v2/health` you should see the health status of the openrouteservice.
+If you navigate to `http://localhost:8080/gr/health` you should see the health status of the openrouteservice.
 The output will be as follows:
 
 ```json
@@ -280,11 +280,11 @@ The following steps are mandatory whenever you change the configuration, folder 
 Now that openrouteservice is set up with correct configurations, check the log files in the
 `/opt/openrouteservice/logs/ors.log` or the Tomcat log files in the `/opt/tomcat/logs` directory.
 
-Navigate to [http://localhost:8080/ors/v2/health](http://localhost:8080/ors/v2/health) in your browser to see the health status of the openrouteservice or
+Navigate to [http://localhost:8080/gr/health](http://localhost:8080/gr/health) in your browser to see the health status of the openrouteservice or
 make a request to the API.
 
 ```shell
-> curl http://localhost:8080/ors/v2/health
+> curl http://localhost:8080/gr/health
 ```
 
 The output should look like this:
@@ -304,14 +304,14 @@ Please adapt the test according to your downloaded osm file.
 ```shell
 # Request a route from A to B withing Andorra
 > curl -X POST \
-  'http://localhost:8080/ors/v2/directions/driving-car' \
+  'http://localhost:8080/gr/directions/driving-car' \
   -H 'Content-Type: application/json; charset=utf-8' \
   -H 'Accept: application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8' \
   -d '{"coordinates":[[1.5036892890930176, 42.4972256361276],[1.6298711299896242, 42.57831077271361]]}'
 
 # Request an Isochrone from a point in Andorra
 > curl -X POST \
-  'http://localhost:8080/ors/v2/isochrones/driving-car' \
+  'http://localhost:8080/gr/isochrones/driving-car' \
   -H 'Content-Type: application/json; charset=utf-8' \
   -H 'Accept: application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8' \
   -d '{"locations":[[1.5036892890930176, 42.4972256361276]],"range":[300]}'

@@ -153,6 +153,6 @@ ORS_UID=${UID} ORS_GID=${GID} docker compose up -d
 
 **检查**
 
-默认情况下，可通过 `http://localhost:8080/ors/v2/health` 端点查询服务状态。服务就绪后，你可以请求 `http://localhost:8080/ors/v2/status` 获取正在运行的服务的更多信息。
+默认情况下，可通过 `http://localhost:8080/gr/health` 端点查询服务状态。服务就绪后，你可以请求 `http://localhost:8080/gr/status` 获取正在运行的服务的更多信息。
 
-如果使用默认数据集，你可以请求 `http://localhost:8080/ors/v2/directions/foot-walking?start=8.676581,49.418204&end=8.692803,49.409465` 进行测试。
+如果使用默认数据集，你可以请求 `http://localhost:8080/gr/directions/foot-walking?start=8.676581,49.418204&end=8.692803,49.409465` 进行测试。

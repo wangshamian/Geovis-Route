@@ -14,7 +14,7 @@ a bounding box for the area of interest has to be defined in the request body.
 This is an example requests for a base graph for the profile `driving-car`:
 ```shell
 curl -X 'POST' \
-  'http://localhost:8082/ors/v2/export/driving-car' \
+  'http://localhost:8082/gr/export/driving-car' \
   -H 'accept: application/geo+json' \
   -H 'Content-Type: application/json' \
   -d '{

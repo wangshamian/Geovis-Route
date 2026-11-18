@@ -72,9 +72,9 @@ ors:
 
   ##### 越野地表覆盖（ESA WorldCover），决定禁行区域与越野速度折减 #####
   offroad:
-    # WorldCover 裁剪后的类别栅格与元数据，留空则不启用
-    worldcover_image: ./worldcover-taipei.png
-    worldcover_meta: ./worldcover-taipei.json
+    # 离线数据目录下的类别栅格与元数据，仅从本地磁盘读取，不访问外网；留空则不启用
+    worldcover_image: ./worldcover/worldcover-taiwan.png
+    worldcover_meta: ./worldcover/worldcover-taiwan.json
 
   ##### ORS endpoints settings #####
   endpoints:

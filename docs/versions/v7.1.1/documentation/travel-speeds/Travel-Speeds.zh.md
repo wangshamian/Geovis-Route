@@ -78,4 +78,4 @@ _尽管目前自行车 profile 的资源中确实存在 speed_limits 文件，�
 [mbfe]: https://github.com/GIScience/openrouteservice/blob/master/ors-engine/src/main/java/org/heigit/ors/routing/graphhopper/extensions/flagencoders/bike/MountainBikeFlagEncoder.java#L52
 [rbfe]: https://github.com/GIScience/openrouteservice/blob/master/ors-engine/src/main/java/org/heigit/ors/routing/graphhopper/extensions/flagencoders/bike/RoadBikeFlagEncoder.java#L85
 [ebfe]: https://github.com/GIScience/openrouteservice/blob/master/ors-engine/src/main/java/org/heigit/ors/routing/graphhopper/extensions/flagencoders/bike/ElectroBikeFlagEncoder.java#L41
-[apidocs]: https://openrouteservice.org/dev/#/api-docs/v2/directions/{profile}/post
+[apidocs]: https://openrouteservice.org/dev/#/api-docsdirections/{profile}/post

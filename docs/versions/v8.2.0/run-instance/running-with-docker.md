@@ -87,7 +87,7 @@ Add `-e "BUILD_GRAPHS=True" \` to trigger a graph rebuild.
 
 After some time, your openrouteservice should be running:
 ```shell
-curl http://localhost:8080/ors/v2/health
+curl http://localhost:8080/gr/health
 {"status":"ready"}
 ```
 

@@ -49,12 +49,12 @@ curl -X POST http://localhost:8082/gr/offroad \
 ```
 起终点
   ↓ ① 构造走廊式搜索范围
-  ↓ ② 按 grid_interval 划分网格，逐格采样高程计算坡度
-  ↓ ③ 坡度超过 max_slope 的网格标记为障碍
-  ↓ ④ A* 八邻域搜索，得到格心路径
+  ↓ ② 按 grid_interval 划分网格，逐格采样高程计算坡度与地表覆盖类别
+  ↓ ③ 坡度超过 max_slope 或落在禁行地表（水体/湿地/冰雪/红树林）的网格标记为障碍
+  ↓ ④ A* 八邻域搜索，代价为坡度与地表折减后的通行时间
   ↓ ⑤ 视线拉直 → Douglas-Peucker 抽稀 → Chaikin 平滑
   ↓ ⑥ 等距重采样计算高程剖面与统计
-输出：LineString + summary + elevation + barriers
+输出：LineString + summary + surfaces + elevation + barriers
 ```
 
 ### 2.2 走廊式搜索范围
@@ -81,19 +81,43 @@ h = max(h, 3 × grid_interval)          // 至少覆盖几个网格
 - 坡角 ≤ `max_slope` 的网格可通行，> `max_slope` 的网格记为障碍。
 - **起终点所在网格始终放行**，避免用户选点恰好落在陡坡上直接无解。
 
-### 2.4 A* 搜索
+### 2.4 地表覆盖约束（WorldCover）
 
-- 八邻域扩展，正交移动代价 1，斜向移动代价 `√2`。
-- 启发函数使用 octile 距离，与移动代价一致，保证搜索到的是网格尺度上的最短路径：
+启用 `ors.offroad.worldcover_image` 与 `worldcover_meta` 后，每个网格中心还会查询一次 ESA WorldCover 地表类别：
+
+| 类别 | 处理方式 |
+| --- | --- |
+| 冰雪、水体、湿地、红树林 | **禁行**，网格直接关闭，A* 会绕开这些区域 |
+| 林地、灌丛、建成区、裸地、苔藓 | 可通行，越野速度按类别折减 |
+| 耕地、草地 | 可通行，折减很小或不变 |
+| 无数据 / 范围外 | 按可通行、不折减处理 |
+
+- 禁行网格与坡度超限网格一起返回在 `barriers` 中，并按类别统计在 `summary.blocked_cells` / `summary.blocked_surfaces`。
+- 折减系数参与 A* 的移动代价，路径会主动绕开林地、建成区等慢速地表，而不只是规避禁行区。
+- 折减同时体现在 `summary.duration` 上，因此同样的里程在林地中的预计耗时明显长于草地。
+- 响应中的 `surface_timeline` 按时间顺序给出“何时进入何种地形、实际速度、该地形走了多远”，便于解释耗时构成。
+
+### 2.5 A* 搜索
+
+- 八邻域扩展，单步代价为**通行时间（秒）**：
 
 ```
-h = (dx + dy) + (√2 − 2) × min(dx, dy)
+单步耗时 = 两点距离 / 折减后速度
+折减后速度 = 基准速度 × 坡度衰减系数 × 地表折减系数
 ```
 
+- 坡度衰减按行驶方向区分：上坡衰减更快，下坡更平缓；基准速度由 `vehicle` 决定。
+- 启发函数使用 octile 距离换算的时间下界：
+
+```
+h = octile × grid_interval / (基准速度 / 3.6)
+```
+
+  基准速度是所有折减系数的上界，因此启发式可采纳，A* 仍得到时间最优路径。
 - 斜向移动时，若两侧正交网格同时是障碍，则禁止穿越，避免从障碍拐角“挤过去”。
 - 完成条件为出队节点等于终点网格；不存在可行路径时返回空几何。
 
-### 2.5 路径后处理
+### 2.6 路径后处理
 
 格心连线天然带有阶梯状锯齿，且比真实直线略长，因此做了三步处理：
 
@@ -105,7 +129,7 @@ h = (dx + dy) + (√2 − 2) × min(dx, dy)
 抽稀后的路径点数量可能很少（例如地形平缓时为 2 个点，即起终点直连），这属于正常结果，表示直线方向确实不存在坡度超限的网格。
 :::
 
-### 2.6 高程剖面与坡度统计
+### 2.7 高程剖面与坡度统计
 
 - 沿最终路径按等距重采样，采样间距不小于 30 m，最多返回 128 个采样点。
 - 每个采样点包含累计距离、高程与原始 WGS84 经纬度，供前端剖面与地图联动使用。
@@ -127,7 +151,7 @@ h = (dx + dy) + (√2 − 2) × min(dx, dy)
 | 字段 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- | --- |
 | `coordinates` | `number[][]` | 是 | — | `[[lon, lat], ...]`，至少 2 个点，当前只取首尾两个点 |
-| `grid_interval` | `number` | 否 | `300` | 网格边长（米），允许范围 `10 ~ 1000` |
+| `grid_interval` | `number` | 否 | `50` | 网格边长（米），允许范围 `10 ~ 1000` |
 | `max_slope` | `number` | 否 | `20` | 最大可通行坡度（度），允许范围 `1 ~ 60` |
 | `vehicle` | `string` | 否 | `offroad-car` | 交通工具，用于估算耗时，可选值见下表 |
 
@@ -141,7 +165,7 @@ h = (dx + dy) + (√2 − 2) × min(dx, dy)
 | `bicycle` | 自行车 | 12 km/h |
 | `foot` | 徒步 | 5 km/h |
 
-`vehicle` 只影响 `summary.duration` 的估算，不改变路径几何与坡度判定。
+`vehicle` 决定越野基准速度，进而影响 A* 的时间代价、路径选择与 `summary.duration`；坡度判定仍只由 `max_slope` 控制。
 
 ### 3.2 响应
 
@@ -151,20 +175,24 @@ h = (dx + dy) + (√2 − 2) × min(dx, dy)
 | `grid_interval` | number | 实际使用的网格边长 |
 | `max_slope` | number | 实际使用的坡度阈值 |
 | `vehicle` | string | 实际使用的交通工具 |
-| `speed_kmh` | number | 该交通工具的平均速度（km/h） |
+| `speed_kmh` | number | 该交通工具的基准越野速度（km/h） |
 | `point_count` | number | 路径折线点数量 |
+| `surfaces` | object[] | 沿途经过的地表构成，按里程从多到少：`label`、`distance`（米）、`speed_factor` |
+| `surface_timeline` | object[] | 按时间顺序的地形片段：`label`、`start_distance`（米，从起点算起）、`start_time`（秒）、`duration`（秒）、`distance`（米）、`speed_kmh`（实际速度）、`speed_factor` |
 | `summary.distance` | number | 路径长度（米），保留 1 位小数 |
-| `summary.duration` | number | 预计耗时（秒），按所选交通工具的平均速度估算 |
+| `summary.duration` | number | 预计耗时（秒），按坡度衰减与地表折减后的速度累计 |
 | `summary.max_slope` | number | 剖面最大坡度（度） |
 | `summary.avg_slope` | number | 剖面平均坡度（度），按距离加权 |
 | `summary.ascend` | number | 累计爬升（米） |
 | `summary.descend` | number | 累计下降（米） |
-| `summary.barrier_count` | number | 坡度超限的网格数量（合并前） |
+| `summary.barrier_count` | number | 障碍网格数量（坡度超限 + 禁行地表，合并前） |
+| `summary.blocked_cells` | number | 因禁行地表被排除的网格数量 |
+| `summary.blocked_surfaces` | object | 禁行网格按地表类别统计，如 `{"水体": 20, "湿地": 3}` |
 | `message` | string | 仅在无可行路径时返回，说明可调整的方向 |
 | `elevation.distance` | number | 剖面总长度（米） |
 | `elevation.min` / `elevation.max` | number | 沿线最低 / 最高高程（米） |
 | `elevation.samples` | object[] | 剖面采样点：`distance`（米）、`ele`（米）、`lon`、`lat` |
-| `barriers` | GeoJSON Polygon / MultiPolygon | 坡度超限区域，相邻网格已合并为面 |
+| `barriers` | GeoJSON Polygon / MultiPolygon | 不可通行区域（坡度超限或地表禁行），相邻网格已合并为面 |
 
 当高程数据不可用时，响应中不会包含 `elevation` 与 `summary` 中的坡度/爬升字段。
 
@@ -184,14 +212,26 @@ h = (dx + dy) + (√2 − 2) × min(dx, dy)
   "vehicle": "offroad-car",
   "speed_kmh": 20.0,
   "point_count": 2,
+  "surfaces": [
+    { "label": "林地", "distance": 3820, "speed_factor": 0.6 },
+    { "label": "草地", "distance": 1560, "speed_factor": 1.0 },
+    { "label": "建成区", "distance": 677, "speed_factor": 0.6 }
+  ],
+  "surface_timeline": [
+    { "index": 1, "label": "草地", "start_distance": 0, "start_time": 0, "duration": 281, "distance": 1560, "speed_kmh": 20.0, "speed_factor": 1.0 },
+    { "index": 2, "label": "林地", "start_distance": 1560, "start_time": 281, "duration": 1046, "distance": 3820, "speed_kmh": 13.1, "speed_factor": 0.6 },
+    { "index": 3, "label": "建成区", "start_distance": 5380, "start_time": 1327, "duration": 135, "distance": 677, "speed_kmh": 18.1, "speed_factor": 0.6 }
+  ],
   "summary": {
     "distance": 6057.0,
-    "duration": 1090,
+    "duration": 1462,
     "max_slope": 35.5,
     "avg_slope": 3.6,
     "ascend": 227.0,
     "descend": 168.0,
-    "barrier_count": 26
+    "barrier_count": 26,
+    "blocked_cells": 23,
+    "blocked_surfaces": { "水体": 20, "湿地": 3 }
   },
   "elevation": {
     "distance": 6057.0,
@@ -226,9 +266,9 @@ h = (dx + dy) + (√2 − 2) × min(dx, dy)
 | 网格间距越界 | `grid_interval 需在 10~1000 米之间` |
 | 坡度阈值越界 | `max_slope 需在 1~60 度之间` |
 | 交通工具不支持 | `不支持的 vehicle：{value}，可选值：...` |
-| 网格数量超限 | `网格数量 {n} 超过上限 250000，请增大 grid_interval 或缩短起终点距离` |
-| 采样阶段超时 | `越野路径计算超时（超过 30000 毫秒），请增大网格间距或缩短起终点距离` |
-| 搜索阶段超时 | `越野路径搜索超时（超过 30000 毫秒），请增大网格间距或缩短起终点距离` |
+| 网格数量超限 | `网格数量 {n} 超过上限 500000，请增大 grid_interval 或缩短起终点距离` |
+| 采样阶段超时 | `越野路径计算超时（超过 60000 毫秒），请增大网格间距或缩短起终点距离` |
+| 搜索阶段超时 | `越野路径搜索超时（超过 60000 毫秒），请增大网格间距或缩短起终点距离` |
 
 以下情况返回 HTTP 200 而非错误：坡度阈值过严导致起终点之间不存在可行路径。此时 `geometry.coordinates` 为空数组，`point_count` 为 0，并附带 `message` 字段说明原因。
 
@@ -247,12 +287,12 @@ rows  = ceil((纬度跨度 × 111320 + 2h) / grid_interval)
 
 | 场景 | 建议值 | 说明 |
 | --- | --- | --- |
-| 城市周边、十公里级 | `200 ~ 300` | 默认值，响应通常在 1 秒内 |
-| 山地、峡谷等起伏剧烈 | `100 ~ 150` | 能识别更细的山脊与沟谷 |
-| 大范围踏勘、几十公里 | `500 ~ 1000` | 减少网格数量，结果更粗略 |
-| 小范围精查（数公里内） | `20 ~ 50` | 注意网格上限，可能返回 400 |
+| 城市周边、十公里级 | `50 ~ 100` | 默认值 50，响应通常在数秒内 |
+| 山地、峡谷等起伏剧烈 | `20 ~ 50` | 能识别更细的山脊与沟谷 |
+| 大范围踏勘、几十公里 | `200 ~ 500` | 减少网格数量，结果更粗略 |
+| 小范围精查（数公里内） | `10 ~ 20` | 注意网格上限，可能返回 400 |
 
-网格总数上限为 **250000**，超限直接返回 400，不会进入计算。单次计算超时上限为 **30000 ms**。
+网格总数上限为 **500000**，超限直接返回 400，不会进入计算。单次计算超时上限为 **60000 ms**。
 
 ### 4.2 max_slope 怎么选
 
@@ -270,10 +310,11 @@ rows  = ceil((纬度跨度 × 111320 + 2h) / grid_interval)
 | 现象 | 原因与处理 |
 | --- | --- |
 | 路径是两点直连（2 个点） | 直线方向无坡度超限网格，属正常结果；可减小 `grid_interval` 观察细节 |
-| `summary.max_slope` 大于 `max_slope` | 两者尺度不同，见 2.6 节 |
+| `summary.max_slope` 大于 `max_slope` | 两者尺度不同，见 2.7 节 |
+| 路径明显绕行 | 直线方向存在禁行地表（水体/湿地等）或慢速地表，A* 选择了耗时更短的路线 |
 | 返回 400 网格数量超限 | 增大 `grid_interval` 或缩短起终点距离 |
 | 返回空路径 | 提高 `max_slope`、增大 `grid_interval`，或更换起终点 |
-| 障碍区域覆盖大片区域 | 该区域地形普遍陡峭，或阈值设置过低 |
+| 障碍区域覆盖大片区域 | 该区域地形普遍陡峭、存在大面积水体/湿地，或阈值设置过低 |
 
 ## 5. 演示页面说明
 
@@ -285,7 +326,7 @@ rows  = ceil((纬度跨度 × 111320 + 2h) / grid_interval)
 | --- | --- | --- |
 | 网格间距 | `300` | 对应请求参数 `grid_interval`，修改后在已有起终点时自动重算 |
 | 最大坡度 | `20` | 对应请求参数 `max_slope`，单位度，修改后自动重算 |
-| 交通工具 | `越野车` | 对应请求参数 `vehicle`，仅影响预计耗时，修改后自动重算 |
+| 交通工具 | `越野车` | 对应请求参数 `vehicle`，决定基准速度，影响路径选择与预计耗时，修改后自动重算 |
 | 障碍显示 | 勾选 | 仅切换障碍面可见性，不触发重算 |
 | 地形起伏 | `2x` | 三维地形垂直夸张系数，范围 `1 ~ 5x`，1x 为真实比例 |
 | 取消 | — | 中止当前计算（AbortController），计算过程中显示已等待秒数 |
@@ -296,7 +337,9 @@ rows  = ceil((纬度跨度 × 111320 + 2h) / grid_interval)
 - 第二行：交通工具、路径点数、网格间距、坡度阈值。
 - 第三行：剖面最大/平均坡度、累计爬升、累计下降。
 - 第四行：障碍网格数量。
-- 下方：高程剖面图。
+- 第五行：沿途地表构成（如「林地 3.82 km ×0.6」）与绕开的禁行地表统计。
+- 第六行：地形时间线，逐段显示「起止时间 · 地形 · 里程 · 实际速度（折减系数）」。
+- 下方：高程剖面图；剖面按 `surface_timeline` 的地表类型分段着色，地形切换处用虚线分隔，图下方给出对应配色图例。
 
 ### 5.3 高程剖面联动
 
@@ -328,10 +371,10 @@ rows  = ceil((纬度跨度 × 111320 + 2h) / grid_interval)
 ### 6.2 已知限制
 
 - 仅支持起点与终点两个坐标，不支持途经点、多点路径。
-- 只依据坡度判定通行，不考虑水体、建筑、保护区、道路等级、限高等地物与规则。
-- 障碍区域表示“坡度超限网格”，不是“绝对不可通行”的权威结论。
+- 通行判定为坡度 + WorldCover 地表覆盖；未配置 WorldCover 数据时只依据坡度，不区分水体、建筑等。
+- 障碍区域表示“坡度超限或地表禁行网格”，不是“绝对不可通行”的权威结论。
 - 结果不含转向指令、路段属性、时间依赖等 Directions 端点具备的信息。
-- 预计耗时按所选交通工具的固定平均速度估算，未考虑坡度、路面等实际通行条件。
+- 地表覆盖按网格中心点采样，网格边界处可能与真实地物存在偏差；`grid_interval` 越小偏差越小。
 - 网格分辨率决定地形细节上限；`grid_interval` 越大，越可能漏掉窄山脊、冲沟等局部地形。
 
 ## 7. 服务端配置
@@ -353,16 +396,31 @@ ors:
       data_access: MMAP
 ```
 
-### 7.2 内部保护参数
+### 7.2 地表覆盖数据
+
+越野路径复用同一份 ESA WorldCover 裁剪栅格：类别 PNG（像素值即类别代码）与描述 bbox、宽高的 JSON。
+
+```yaml
+ors:
+  offroad:
+    worldcover_image: ./worldcover/worldcover-taipei.png
+    worldcover_meta: ./worldcover/worldcover-taipei.json
+```
+
+- 两项均留空或文件不存在时，不启用地表覆盖约束，仅按坡度判定。
+- 栅格在服务启动时一次性读入内存，越野路径按网格中心点查询，不访问外网。
+- 元数据中的 `bbox` 必须与图片裁剪范围一致，否则禁行与折减位置会整体偏移。
+
+### 7.3 内部保护参数
 
 `OffRoader` 还支持两个未在 REST 层暴露的 hint，仅供内部调用或后续扩展使用：
 
 | Hint | 默认值 | 说明 |
 | --- | --- | --- |
-| `max_cells` | `250000` | 单次请求允许的最大网格数量 |
-| `timeout_ms` | `30000` | 单次请求的计算超时时间 |
+| `max_cells` | `500000` | 单次请求允许的最大网格数量 |
+| `timeout_ms` | `60000` | 单次请求的计算超时时间 |
 
-### 7.3 启动示例
+### 7.4 启动示例
 
 ```bash
 java -jar gr-api/target/ors.jar \
@@ -376,7 +434,8 @@ java -jar gr-api/target/ors.jar \
 | --- | --- |
 | `gr-api/src/main/java/org/heigit/geovisroute/api/controllers/OffRoadAPI.java` | REST 入口、参数校验、统计与高程剖面 |
 | `gr-engine/src/main/java/com/graphhopper/offroad/OffRoader.java` | 走廊构造、网格生成、A*、路径平滑、障碍合并 |
-| `gr-engine/src/main/java/com/graphhopper/offroad/OffRoadGrid.java` | 网格数据模型 |
+| `gr-engine/src/main/java/com/graphhopper/offroad/OffRoadGrid.java` | 网格数据模型（坡度、坡度衰减、地表类型与折减系数） |
+| `gr-engine/src/main/java/com/graphhopper/offroad/WorldCoverProvider.java` | ESA WorldCover 栅格读取：禁行类别与地表速度折减 |
 | `gr-engine/src/main/java/com/graphhopper/offroad/util/GeoUtils.java` | 距离计算与网格坡度计算 |
 | `gr-engine/src/main/java/com/graphhopper/offroad/util/GeoBounds.java` | 边界归一化与按距离扩展 |
 | `gr-engine/src/main/java/com/graphhopper/OffRoadResponse.java` | 响应载体 |

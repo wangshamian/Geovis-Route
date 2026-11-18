@@ -86,7 +86,7 @@ docker run -dt --name ors-app \
 
 一段时间后，你的 openrouteservice 应该已经运行：
 ```shell
-curl http://localhost:8080/ors/v2/health
+curl http://localhost:8080/gr/health
 {"status":"ready"}
 ```
 

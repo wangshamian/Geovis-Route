@@ -22,8 +22,8 @@ docker compose up
 ## 使用
 Openrouteservice 为不同的空间用途提供了一组端点。它们由 [Java servlet 容器中的 Tomcat](https://github.com/GIScience/openrouteservice/blob/master/ors-api/WebContent/WEB-INF/web.xml) 提供。默认情况下，你可以通过以下地址查询这些服务：
 
-- `http://localhost:8080/ors/v2/directions`
-- `http://localhost:8080/ors/v2/isochrones`
-- `http://localhost:8080/ors/v2/matrix`
+- `http://localhost:8080/gr/directions`
+- `http://localhost:8080/gr/isochrones`
+- `http://localhost:8080/gr/matrix`
 
 请注意，通过 maven 运行的 Tomcat 默认使用 `8082` 端口。

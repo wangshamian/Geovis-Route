@@ -32,6 +32,8 @@ public class OffRoadResponse{
     private final Map<String, Integer> blockedSurfaceCounts = new LinkedHashMap<>();
     // 纯越野路径经过的地表构成，按里程从多到少
     private List<SurfaceSlice> pathSurfaces = new ArrayList<>();
+    // 纯越野路径按时间顺序经过的地形片段（地形、起始时间、速度、距离）
+    private List<TerrainSlice> pathTerrain = new ArrayList<>();
 //    private String debugInfo = "";
 
     public OffRoadResponse() {
@@ -145,6 +147,72 @@ public class OffRoadResponse{
 
         public double getDistance() {
             return distance;
+        }
+    }
+
+    public List<TerrainSlice> getPathTerrain() {
+        return pathTerrain;
+    }
+
+    public void setPathTerrain(List<TerrainSlice> pathTerrain) {
+        this.pathTerrain = pathTerrain == null ? new ArrayList<>() : pathTerrain;
+    }
+
+    /**
+     * 纯越野路径上一段连续同类地形：起点里程、从起点算起的起始时间、该段耗时、里程与实际速度。
+     */
+    public static class TerrainSlice {
+        private final String label;
+        private final double startDistance;
+        private final double startSeconds;
+        private final double speedFactor;
+        private double distance;
+        private double duration;
+
+        public TerrainSlice(String label, double startDistance, double startSeconds, double speedFactor) {
+            this.label = label;
+            this.startDistance = startDistance;
+            this.startSeconds = startSeconds;
+            this.speedFactor = speedFactor;
+        }
+
+        public void addDistance(double meters) {
+            this.distance += meters;
+        }
+
+        public void addDuration(double seconds) {
+            this.duration += seconds;
+        }
+
+        public String getLabel() {
+            return label;
+        }
+
+        public double getStartDistance() {
+            return startDistance;
+        }
+
+        public double getStartSeconds() {
+            return startSeconds;
+        }
+
+        public double getSpeedFactor() {
+            return speedFactor;
+        }
+
+        public double getDistance() {
+            return distance;
+        }
+
+        public double getDuration() {
+            return duration;
+        }
+
+        /**
+         * 该段实际平均速度（km/h），已包含坡度与地表折减。
+         */
+        public double getSpeedKmh() {
+            return duration > 0 ? distance / duration * 3.6 : 0;
         }
     }
 

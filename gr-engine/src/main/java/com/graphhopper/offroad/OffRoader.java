@@ -43,12 +43,12 @@ public class OffRoader {
     /**
      * 默认最多网格数量与超时时间。
      */
-    private static final int DEFAULT_MAX_CELLS = 250_000;
-    private static final long DEFAULT_TIMEOUT_MS = 30_000;
+    private static final int DEFAULT_MAX_CELLS = 500_000;
+    private static final long DEFAULT_TIMEOUT_MS = 60_000;
     /**
      * 混合路由需要逐格查询公路，网格数量上限单独收紧。
      */
-    private static final int MAX_HYBRID_CELLS = 60_000;
+    private static final int MAX_HYBRID_CELLS = 150_000;
 
     protected final ElevationProvider eleProvider;
     /**
@@ -77,7 +77,7 @@ public class OffRoader {
     /**
      * 混合路由按时间搜索时使用的网格边长（米）与全图最大速度（km/h）。
      */
-    private double cellSideMeters = 300;
+    private double cellSideMeters = 50;
     private double maxSpeedKmh = 25;
     /**
      * 八邻域偏移：{dx, dy}，前四个为正交方向，后四个为斜向方向。
@@ -107,7 +107,7 @@ public class OffRoader {
 
     public OffRoadResponse offroad(GHRequest request) {
         OffRoadResponse offRoadResponse = new OffRoadResponse();
-        double gridInterval = request.getHints().getDouble("grid_interval", 300);
+        double gridInterval = request.getHints().getDouble("grid_interval", 50);
         // 坡度阈值、网格数量上限与超时时间均可通过 hint 配置，便于前端按需调整
         this.maxSlope = request.getHints().getDouble("max_slope", DEFAULT_MAX_SLOPE);
         int maxCells = request.getHints().getInt("max_cells", DEFAULT_MAX_CELLS);
@@ -229,11 +229,15 @@ public class OffRoader {
                         maxSpeedKmh = Math.max(maxSpeedKmh, offRoadGrid.roadSpeedKmh);
                     }
                 }
-                // 越野避让：网格中心落在水体/建筑/铁路等要素上时不可通行；
+                // 越野避让：网格中心落在水体/湿地/冰雪等禁行地表上时不可通行；
                 // 混合路由下已吸附公路的网格视为桥梁/涵洞跨越，不做避让，避免错误切断跨河道路
-                if (obstacleProvider != null && offRoadGrid.roadSpeedKmh <= 0
-                        && obstacleProvider.isBlocked(center.lat, center.lon)) {
-                    offRoadGrid.blocked = true;
+                if (obstacleProvider != null) {
+                    // 地表信息只采样一次并缓存在网格上，避免 A* 每一步都读取栅格
+                    offRoadGrid.surfaceFactor = obstacleProvider.speedFactor(center.lat, center.lon);
+                    offRoadGrid.surfaceLabel = obstacleProvider.surfaceName(center.lat, center.lon);
+                    if (offRoadGrid.roadSpeedKmh <= 0 && obstacleProvider.isBlocked(center.lat, center.lon)) {
+                        offRoadGrid.blocked = true;
+                    }
                 }
                 grids.add(offRoadGrid);
 
@@ -279,9 +283,8 @@ public class OffRoader {
                 // 坡度超限或落在避让要素上的网格视为障碍，直接关闭
                 grid.isInCloseList = true;
                 // 统计因地表覆盖禁行（水体/湿地/冰雪等）被排除的网格，供结果说明
-                if (grid.blocked && obstacleProvider != null) {
-                    offRoadResponse.addBlockedCell(
-                            obstacleProvider.surfaceName(grid.center.lat, grid.center.lon));
+                if (grid.blocked) {
+                    offRoadResponse.addBlockedCell(grid.surfaceLabel);
                 }
                 Coordinate[] coordinates = new Coordinate[grid.coordinates.size()];
                 for (int i = 0; i < grid.coordinates.size(); i++) {
@@ -355,7 +358,7 @@ public class OffRoader {
                 }
                 double stepCost = hybrid
                         ? hybridStepCost(nodeCurrent, child)
-                        : (diagonal ? Math.sqrt(2) : 1);
+                        : offroadStepCost(nodeCurrent, child);
                 double tentativeG = nodeCurrent.g + stepCost;
                 // 找到更优路径才更新父节点与代价
                 if (tentativeG < child.g) {
@@ -386,12 +389,41 @@ public class OffRoader {
         }
         Collections.reverse(pathGrids);
 
-        // 纯越野：统计沿途经过的地表构成，用于说明哪些地表导致减速
-        if (!hybrid && obstacleProvider != null && pathGrids.size() > 1) {
-            List<OffRoadResponse.SurfaceSlice> pathSurfaces =
-                    new ArrayList<>(collectSurfaces(pathGrids).values());
-            pathSurfaces.sort(Comparator.comparingDouble(OffRoadResponse.SurfaceSlice::getDistance).reversed());
-            offRoadResponse.setPathSurfaces(pathSurfaces);
+        // 纯越野：搜索代价即累计用时（含坡度与地表折减），
+        // 并按时间顺序记录沿途地形：何时进入什么地形、实际速度与被折减到多少、走了多远
+        if (!hybrid) {
+            double elapsed = 0;
+            double elapsedMeters = 0;
+            List<OffRoadResponse.TerrainSlice> terrain = new ArrayList<>();
+            OffRoadResponse.TerrainSlice current = null;
+            for (int i = 1; i < pathGrids.size(); i++) {
+                OffRoadGrid previous = pathGrids.get(i - 1);
+                OffRoadGrid grid = pathGrids.get(i);
+                double meters = GeoUtils.getDistance(
+                        new GlobalCoordinates(previous.center.lat, previous.center.lon),
+                        new GlobalCoordinates(grid.center.lat, grid.center.lon));
+                double seconds = offroadStepCost(previous, grid);
+                String label = grid.surfaceLabel;
+                if (label != null) {
+                    if (current == null || !current.getLabel().equals(label)) {
+                        current = new OffRoadResponse.TerrainSlice(
+                                label, elapsedMeters, elapsed, grid.surfaceFactor);
+                        terrain.add(current);
+                    }
+                    current.addDistance(meters);
+                    current.addDuration(seconds);
+                } else {
+                    // 无地表分类信息（未启用 WorldCover 或超出栅格范围）时结束当前片段
+                    current = null;
+                }
+                elapsed += seconds;
+                elapsedMeters += meters;
+            }
+            offRoadResponse.setDurationSeconds(Math.round(elapsed));
+            offRoadResponse.setPathTerrain(terrain);
+            if (pathGrids.size() > 1) {
+                offRoadResponse.setPathSurfaces(sortSurfaces(collectSurfaces(pathGrids)));
+            }
         }
 
         if (hybrid) {
@@ -687,16 +719,25 @@ public class OffRoader {
 
     /**
      * 八方向移动的 octile 距离，作为一致的启发函数，保证 A* 结果最优。
-     * 混合路由按时间搜索，因此再换算为“以全图最大速度走完该距离所需秒数”。
+     * 纯越野与混合路由均按时间搜索，因此换算为“以全图最大速度走完该距离所需秒数”。
+     * 最大速度取基准速度（坡度与地表只会降低速度），保证启发式可采纳。
      */
     private double heuristic(OffRoadGrid from, OffRoadGrid to) {
         int dx = Math.abs(from.x - to.x);
         int dy = Math.abs(from.y - to.y);
         double octile = (dx + dy) + (Math.sqrt(2) - 2) * Math.min(dx, dy);
-        if (!hybrid) {
-            return octile;
-        }
         return octile * cellSideMeters / (maxSpeedKmh / 3.6);
+    }
+
+    /**
+     * 纯越野单步代价（秒）：按坡度方向衰减与地表类型折减后的实际速度计算，
+     * 使 A* 主动绕开慢速地表，而不是只按距离选路。
+     */
+    private double offroadStepCost(OffRoadGrid from, OffRoadGrid to) {
+        double meters = GeoUtils.getDistance(
+                new GlobalCoordinates(from.center.lat, from.center.lon),
+                new GlobalCoordinates(to.center.lat, to.center.lon));
+        return meters / (offroadSpeed(from, to) / 3.6);
     }
 
     /**
@@ -704,15 +745,16 @@ public class OffRoader {
      * 并对越野段施加惩罚，使路径在耗时接近时优先走公路。
      */
     private double hybridStepCost(OffRoadGrid from, OffRoadGrid to) {
+        boolean onRoad = from.roadSpeedKmh > 0 && to.roadSpeedKmh > 0;
+        if (!onRoad) {
+            return offroadStepCost(from, to) * offroadPenalty;
+        }
         double meters = GeoUtils.getDistance(
                 new GlobalCoordinates(from.center.lat, from.center.lon),
                 new GlobalCoordinates(to.center.lat, to.center.lon));
-        boolean onRoad = from.roadSpeedKmh > 0 && to.roadSpeedKmh > 0;
-        double speedKmh = onRoad
-                ? Math.max(5, Math.min(from.roadSpeedKmh, to.roadSpeedKmh) * militaryVehicleType.getRoadSpeedFactor())
-                : offroadSpeed(from, to);
-        double seconds = meters / (speedKmh / 3.6);
-        return onRoad ? seconds : seconds * offroadPenalty;
+        double speedKmh = Math.max(5,
+                Math.min(from.roadSpeedKmh, to.roadSpeedKmh) * militaryVehicleType.getRoadSpeedFactor());
+        return meters / (speedKmh / 3.6);
     }
 
     /**
@@ -740,21 +782,21 @@ public class OffRoader {
      */
     private Map<String, OffRoadResponse.SurfaceSlice> collectSurfaces(List<OffRoadGrid> grids) {
         Map<String, OffRoadResponse.SurfaceSlice> surfaces = new LinkedHashMap<>();
-        if (obstacleProvider == null || grids == null || grids.size() < 2) {
+        if (grids == null || grids.size() < 2) {
             return surfaces;
         }
         for (int i = 1; i < grids.size(); i++) {
             OffRoadGrid previous = grids.get(i - 1);
             OffRoadGrid current = grids.get(i);
-            String label = obstacleProvider.surfaceName(current.center.lat, current.center.lon);
+            String label = current.surfaceLabel;
             if (label == null) {
                 continue;
             }
             double meters = GeoUtils.getDistance(
                     new GlobalCoordinates(previous.center.lat, previous.center.lon),
                     new GlobalCoordinates(current.center.lat, current.center.lon));
-            surfaces.computeIfAbsent(label, key -> new OffRoadResponse.SurfaceSlice(key,
-                            obstacleProvider.speedFactor(current.center.lat, current.center.lon)))
+            surfaces.computeIfAbsent(label,
+                            key -> new OffRoadResponse.SurfaceSlice(key, current.surfaceFactor))
                     .addDistance(meters);
         }
         return surfaces;
@@ -903,10 +945,8 @@ public class OffRoader {
         } else {
             factor = 1;
         }
-        // 地表覆盖折减：林地/灌丛/冰雪等按类别降低越野速度
-        if (obstacleProvider != null) {
-            factor *= Math.max(0.2, obstacleProvider.speedFactor(to.center.lat, to.center.lon));
-        }
+        // 地表覆盖折减：林地/灌丛/建成区等按类别降低越野速度（网格构建时已缓存）
+        factor *= Math.max(0.2, to.surfaceFactor);
         return offroadSpeedKmh * factor;
     }
 

@@ -98,4 +98,4 @@ of way, the actual speed can range from 3 to 10km/h
 [mbfe]: https://github.com/GIScience/openrouteservice/blob/main/ors-engine/src/main/java/org/heigit/ors/routing/graphhopper/extensions/flagencoders/bike/MountainBikeFlagEncoder.java#L52
 [rbfe]: https://github.com/GIScience/openrouteservice/blob/main/ors-engine/src/main/java/org/heigit/ors/routing/graphhopper/extensions/flagencoders/bike/RoadBikeFlagEncoder.java#L85
 [ebfe]: https://github.com/GIScience/openrouteservice/blob/main/ors-engine/src/main/java/org/heigit/ors/routing/graphhopper/extensions/flagencoders/bike/ElectroBikeFlagEncoder.java#L41
-[api_docs]: https://openrouteservice.org/dev/#/api-docs/v2/directions/{profile}/post
+[api_docs]: https://openrouteservice.org/dev/#/api-docsdirections/{profile}/post

@@ -14,7 +14,7 @@
 以下是一个为 `driving-car` profile 请求基础图的示例请求：
 ```shell
 curl -X 'POST' \
-  'http://localhost:8082/ors/v2/export/driving-car' \
+  'http://localhost:8082/gr/export/driving-car' \
   -H 'accept: application/geo+json' \
   -H 'Content-Type: application/json' \
   -d '{
