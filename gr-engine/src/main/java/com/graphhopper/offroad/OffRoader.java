@@ -13,7 +13,8 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Polygon;
-import org.locationtech.jts.operation.union.UnaryUnionOp;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -46,9 +47,22 @@ public class OffRoader {
     private static final int DEFAULT_MAX_CELLS = 500_000;
     private static final long DEFAULT_TIMEOUT_MS = 60_000;
     /**
-     * 混合路由需要逐格查询公路，网格数量上限单独收紧。
+     * 混合路由的网格数量上限。路网已改为一次性栅格化，不再逐格查询，
+     * 因此可与纯越野使用同一上限。
      */
-    private static final int MAX_HYBRID_CELLS = 150_000;
+    private static final int MAX_HYBRID_CELLS = 500_000;
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(OffRoader.class);
+    /**
+     * 本次请求的分段耗时（纳秒），仅用于性能观测。OffRoader 为每请求实例，无需考虑并发复用。
+     */
+    private long buildNanos;
+    private long obstacleNanos;
+    private long barrierNanos;
+    private long searchNanos;
+    private long postNanos;
+    private int expandedNodes;
+    private int cellCount;
 
     protected final ElevationProvider eleProvider;
     /**
@@ -80,10 +94,35 @@ public class OffRoader {
     private double cellSideMeters = 50;
     private double maxSpeedKmh = 25;
     /**
+     * 本次建图的左下角经纬度与单格跨度（度），用于把禁行网格还原成矩形。
+     */
+    private double gridMinLon;
+    private double gridMinLat;
+    private double gridCellWidth;
+    private double gridCellHeight;
+    /**
+     * 单步移动的格距（米），正交与斜向分开预计算，A* 松弛时直接取用。
+     */
+    private double stepMetersX = 50;
+    private double stepMetersY = 50;
+    private double stepDiagMeters = 70.7;
+    /**
+     * 坡度采样的复用缓冲，避免每个网格都新建数组。
+     */
+    private final double[] sampleLats = new double[12];
+    private final double[] sampleLons = new double[12];
+    /**
      * 八邻域偏移：{dx, dy}，前四个为正交方向，后四个为斜向方向。
      */
     private static final int[][] NEIGHBOR_OFFSETS = {
             {0, -1}, {1, 0}, {0, 1}, {-1, 0}, {-1, -1}, {1, -1}, {1, 1}, {-1, 1}
+    };
+    /**
+     * 大网格坡度采样的 12 个采样点（按 3×3 细分的边与角）。
+     */
+    private static final int[][] SLOPE_SAMPLE_OFFSETS = {
+            {0, 0}, {0, 1}, {0, 2}, {0, 3}, {-1, 3}, {-2, 3}, {-3, 3},
+            {-3, 2}, {-3, 1}, {-3, 0}, {-2, 0}, {-1, 0}
     };
 
     public OffRoader(ElevationProvider eleProvider) {
@@ -106,6 +145,7 @@ public class OffRoader {
     }
 
     public OffRoadResponse offroad(GHRequest request) {
+        long requestStartNanos = System.nanoTime();
         OffRoadResponse offRoadResponse = new OffRoadResponse();
         double gridInterval = request.getHints().getDouble("grid_interval", 50);
         // 坡度阈值、网格数量上限与超时时间均可通过 hint 配置，便于前端按需调整
@@ -139,12 +179,34 @@ public class OffRoader {
         halfWidth = Math.max(halfWidth, gridInterval * 3);
         GeoBounds corridor = geoBounds.expandBoundsByMeters(halfWidth);
 
+        long buildStartNanos = System.nanoTime();
         List<OffRoadGrid> gridCells = createOffRoadGrids(corridor, gridInterval, this.eleProvider, startPoint,
                 endPoint, maxCells, deadline, timeoutMs);
+        this.buildNanos = System.nanoTime() - buildStartNanos;
         if (gridCells.isEmpty()) {
+            logTiming(requestStartNanos, gridInterval);
             return offRoadResponse;
         }
-        return calOffRoadPath(offRoadResponse, gridCells, gridInterval, deadline, timeoutMs);
+        OffRoadResponse result = calOffRoadPath(offRoadResponse, gridCells, gridInterval, deadline, timeoutMs);
+        logTiming(requestStartNanos, gridInterval);
+        return result;
+    }
+
+    /**
+     * 输出本次请求的分段耗时，用于定位性能瓶颈。
+     */
+    private void logTiming(long requestStartNanos, double gridInterval) {
+        if (!LOGGER.isInfoEnabled()) {
+            return;
+        }
+        LOGGER.info("[offroad-timing] interval={}m cells={} build={}ms(obstacle={}ms) barrier={}ms astar={}ms({} nodes) post={}ms total={}ms",
+                gridInterval, cellCount, toMillis(buildNanos), toMillis(obstacleNanos), toMillis(barrierNanos),
+                toMillis(searchNanos), expandedNodes, toMillis(postNanos),
+                toMillis(System.nanoTime() - requestStartNanos));
+    }
+
+    private static long toMillis(long nanos) {
+        return nanos / 1_000_000;
     }
 
     /**
@@ -153,8 +215,6 @@ public class OffRoader {
     public List<OffRoadGrid> createOffRoadGrids(GeoBounds geoBounds, double cellSide, ElevationProvider eleProvider,
                                                 GHPoint startPoint, GHPoint endPoint, int maxCells, long deadline,
                                                 long timeoutMs) {
-        int[][] offRoadGridSteps = {{0, 0}, {0, 1}, {0, 2}, {0, 3}, {-1, 3}, {-2, 3}, {-3, 3},
-                {-3, 2}, {-3, 1}, {-3, 0}, {-2, 0}, {-1, 0}};
         double lonDistance = GeoUtils.getDistance(new GlobalCoordinates(geoBounds.maxLat, geoBounds.minLon),
                 new GlobalCoordinates(geoBounds.maxLat, geoBounds.maxLon));
         double latDistance = GeoUtils.getDistance(new GlobalCoordinates(geoBounds.maxLat, geoBounds.minLon),
@@ -175,12 +235,31 @@ public class OffRoader {
                     "混合路由网格数量 %d 超过上限 %d，请增大 grid_interval 或缩短起终点距离", totalCells, MAX_HYBRID_CELLS));
         }
         this.cellSideMeters = cellSide;
+        this.cellCount = (int) totalCells;
 
         List<OffRoadGrid> grids = new ArrayList<>((int) totalCells);
         double cellWidth = geoBounds.getWidth() / cols;
         double cellHeight = geoBounds.getHeight() / rows;
+        this.gridMinLon = geoBounds.minLon;
+        this.gridMinLat = geoBounds.minLat;
+        this.gridCellWidth = cellWidth;
+        this.gridCellHeight = cellHeight;
+        double metersPerDegreeLat = 110540;
+        double metersPerDegreeLon = 111320 * Math.cos(Math.toRadians((geoBounds.minLat + geoBounds.maxLat) / 2));
+        this.stepMetersX = cellWidth * metersPerDegreeLon;
+        this.stepMetersY = cellHeight * metersPerDegreeLat;
+        this.stepDiagMeters = Math.hypot(this.stepMetersX, this.stepMetersY);
         this.startGrid = null;
         this.endGrid = null;
+
+        // 混合路由：先把 bbox 内的路网一次性栅格化，建图时直接查表，
+        // 避免对每个网格单独做空间索引查询（空旷格子会反复扩圈，代价极高）
+        RoadAccessProvider.RoadGrid roadGrid = hybrid
+                ? roadAccessProvider.rasterizeRoads(geoBounds, rows, cols, cellWidth, cellHeight)
+                : null;
+        double[] roadSpeeds = roadGrid == null ? null : roadGrid.speedKmh();
+        int[] roadEdgeIds = roadGrid == null ? null : roadGrid.edgeId();
+        int[] roadAdjNodes = roadGrid == null ? null : roadGrid.adjNode();
 
         // 开始计算OffRoadGrid
         int processed = 0;
@@ -191,53 +270,56 @@ public class OffRoader {
                     throw new IllegalArgumentException("越野路径计算超时（超过 " + timeoutMs
                             + " 毫秒），请增大网格间距或缩短起终点距离");
                 }
+                // 边界统一用"起始经纬度 + 序号 × 步长"计算，保证相邻网格公共边完全重合，
+                // 否则浮点末位差异会让 JTS 并集多做一次节点运算，并产生细缝
                 double minX = geoBounds.minLon + j * cellWidth;
-                double maxX = minX + cellWidth;
+                double maxX = geoBounds.minLon + (j + 1) * cellWidth;
                 double minY = geoBounds.minLat + i * cellHeight;
-                double maxY = minY + cellHeight;
+                double maxY = geoBounds.minLat + (i + 1) * cellHeight;
 
                 // 获取Grid的属性值
                 GHPoint center = new GHPoint((minY + maxY) / 2, (minX + maxX) / 2);
-                List<GHPoint> coordinates = new ArrayList<>();
-                coordinates.add(new GHPoint(minY, minX));
-                coordinates.add(new GHPoint(minY, maxX));
-                coordinates.add(new GHPoint(maxY, maxX));
-                coordinates.add(new GHPoint(maxY, minX));
-                coordinates.add(new GHPoint(minY, minX));
                 // 采样并计算坡度
-                List<GlobalCoordinates> sampleCoordinates = new ArrayList<>();
-                double sampleDeltaX = cellWidth / 3;
-                double sampleDeltaY = cellHeight / 3;
-                for (int k = 0; k < 12; k++) {
-                    sampleCoordinates.add(new GlobalCoordinates(minY + offRoadGridSteps[k][0] * sampleDeltaY,
-                            minX + offRoadGridSteps[k][1] * sampleDeltaX));
-                }
-                double slope = GeoUtils.getGridSlope(sampleCoordinates, eleProvider);
+                double slope = computeGridSlope(minX, minY, cellWidth, cellHeight);
                 double elevation = eleProvider.getEle(center.lat, center.lon);
-                OffRoadGrid offRoadGrid = new OffRoadGrid(j, i, slope, elevation, center, coordinates);
+                OffRoadGrid offRoadGrid = new OffRoadGrid(j, i, slope, elevation, center);
                 // 混合路由：标记落在公路上的网格，并记录该处公路速度
                 if (hybrid) {
-                    RoadAccessProvider.RoadAccess roadAccess = roadAccessProvider.getRoad(center.lat, center.lon);
-                    if (roadAccess != null && roadAccess.speedKmh() > 0) {
-                        offRoadGrid.roadSpeedKmh = roadAccess.speedKmh();
-                        offRoadGrid.roadLabel = roadAccess.roadLabel() == null ? "" : roadAccess.roadLabel();
-                        offRoadGrid.roadName = roadAccess.roadName() == null ? "" : roadAccess.roadName();
-                        offRoadGrid.roadEdgeId = roadAccess.edgeId();
-                        offRoadGrid.roadAdjNode = roadAccess.adjNode();
-                        offRoadGrid.roadSnapLat = roadAccess.snapLat();
-                        offRoadGrid.roadSnapLon = roadAccess.snapLon();
-                        maxSpeedKmh = Math.max(maxSpeedKmh, offRoadGrid.roadSpeedKmh);
+                    int roadIndex = i * cols + j;
+                    if (roadSpeeds != null) {
+                        if (roadSpeeds[roadIndex] > 0) {
+                            offRoadGrid.roadSpeedKmh = roadSpeeds[roadIndex];
+                            offRoadGrid.roadEdgeId = roadEdgeIds[roadIndex];
+                            offRoadGrid.roadAdjNode = roadAdjNodes[roadIndex];
+                            // 栅格化没有真实吸附点，用格心作为道路几何方向的参考点
+                            offRoadGrid.roadSnapLat = center.lat;
+                            offRoadGrid.roadSnapLon = center.lon;
+                            maxSpeedKmh = Math.max(maxSpeedKmh, offRoadGrid.roadSpeedKmh);
+                        }
+                    } else {
+                        // 提供者不支持栅格化时回退到逐格空间索引查询
+                        RoadAccessProvider.RoadAccess roadAccess = roadAccessProvider.getRoad(center.lat, center.lon);
+                        if (roadAccess != null && roadAccess.speedKmh() > 0) {
+                            offRoadGrid.roadSpeedKmh = roadAccess.speedKmh();
+                            offRoadGrid.roadEdgeId = roadAccess.edgeId();
+                            offRoadGrid.roadAdjNode = roadAccess.adjNode();
+                            offRoadGrid.roadSnapLat = roadAccess.snapLat();
+                            offRoadGrid.roadSnapLon = roadAccess.snapLon();
+                            maxSpeedKmh = Math.max(maxSpeedKmh, offRoadGrid.roadSpeedKmh);
+                        }
                     }
                 }
                 // 越野避让：网格中心落在水体/湿地/冰雪等禁行地表上时不可通行；
                 // 混合路由下已吸附公路的网格视为桥梁/涵洞跨越，不做避让，避免错误切断跨河道路
                 if (obstacleProvider != null) {
+                    long obstacleStartNanos = System.nanoTime();
                     // 地表信息只采样一次并缓存在网格上，避免 A* 每一步都读取栅格
                     offRoadGrid.surfaceFactor = obstacleProvider.speedFactor(center.lat, center.lon);
                     offRoadGrid.surfaceLabel = obstacleProvider.surfaceName(center.lat, center.lon);
                     if (offRoadGrid.roadSpeedKmh <= 0 && obstacleProvider.isBlocked(center.lat, center.lon)) {
                         offRoadGrid.blocked = true;
                     }
+                    this.obstacleNanos += System.nanoTime() - obstacleStartNanos;
                 }
                 grids.add(offRoadGrid);
 
@@ -261,13 +343,15 @@ public class OffRoader {
         PointList roadPath = new PointList();
         JsonFeature barrierFeature = new JsonFeature();
         GeometryFactory geometryFactory = new GeometryFactory();
-        List<Polygon> barrierPolygons = new ArrayList<>();
+        // 禁行网格用布尔矩阵记录，最后按矩形合并成禁行面
+        int barrierCells = 0;
 
         if (grids.isEmpty()) {
             offRoadResponse.addOffRoadPoints(roadPath);
             return offRoadResponse;
         }
 
+        long barrierStartNanos = System.nanoTime();
         // 建立二维索引，邻居查找降为 O(1)
         int rows = 0;
         int cols = 0;
@@ -276,6 +360,7 @@ public class OffRoader {
             cols = Math.max(cols, grid.x + 1);
         }
         OffRoadGrid[][] cellIndex = new OffRoadGrid[rows][cols];
+        boolean[][] blockedCells = new boolean[rows][cols];
         for (OffRoadGrid grid : grids) {
             cellIndex[grid.y][grid.x] = grid;
             // 起终点所在网格始终放行，避免用户选点恰好落在陡坡或避让要素上导致无法起算
@@ -286,12 +371,8 @@ public class OffRoader {
                 if (grid.blocked) {
                     offRoadResponse.addBlockedCell(grid.surfaceLabel);
                 }
-                Coordinate[] coordinates = new Coordinate[grid.coordinates.size()];
-                for (int i = 0; i < grid.coordinates.size(); i++) {
-                    GHPoint gridPoint = grid.coordinates.get(i);
-                    coordinates[i] = new Coordinate(gridPoint.lon, gridPoint.lat);
-                }
-                barrierPolygons.add(geometryFactory.createPolygon(coordinates));
+                blockedCells[grid.y][grid.x] = true;
+                barrierCells++;
             } else {
                 // 可通行网格初始化代价
                 grid.g = Double.MAX_VALUE;
@@ -299,13 +380,14 @@ public class OffRoader {
                 grid.f = Double.MAX_VALUE;
                 grid.isInOpenList = false;
                 grid.isInCloseList = false;
-                grid.parentId = null;
+                grid.parent = null;
             }
         }
         // 相邻障碍网格合并为面，减少返回的多边形数量与前端绘制压力
-        offRoadResponse.setBarrierCount(barrierPolygons.size());
-        barrierFeature.setGeometry(mergeBarrierPolygons(geometryFactory, barrierPolygons));
+        offRoadResponse.setBarrierCount(barrierCells);
+        barrierFeature.setGeometry(buildBarrierGeometry(geometryFactory, blockedCells));
         offRoadResponse.addBarrierFeature(barrierFeature);
+        this.barrierNanos = System.nanoTime() - barrierStartNanos;
 
         if (startGrid == null || endGrid == null) {
             // 起终点不在搜索范围内，返回空路径
@@ -314,9 +396,10 @@ public class OffRoader {
         }
 
         // 标准 A*：按 f = g + h 升序扩展代价最小的节点
+        long searchStartNanos = System.nanoTime();
         PriorityQueue<OffRoadGrid> openList = new PriorityQueue<>(Comparator.comparingDouble(grid -> grid.f));
         startGrid.g = 0;
-        startGrid.parentId = null;
+        startGrid.parent = null;
         startGrid.h = heuristic(startGrid, endGrid);
         startGrid.f = startGrid.h;
         startGrid.isInOpenList = true;
@@ -356,24 +439,26 @@ public class OffRoader {
                         continue;
                     }
                 }
+                // 网格边长固定，距离直接取预计算的格距，避免每次松弛都做测地线换算
+                double stepMeters = diagonal ? stepDiagMeters : (offset[1] != 0 ? stepMetersX : stepMetersY);
                 double stepCost = hybrid
-                        ? hybridStepCost(nodeCurrent, child)
-                        : offroadStepCost(nodeCurrent, child);
+                        ? hybridStepCost(nodeCurrent, child, stepMeters)
+                        : offroadStepCost(nodeCurrent, child, stepMeters);
                 double tentativeG = nodeCurrent.g + stepCost;
                 // 找到更优路径才更新父节点与代价
                 if (tentativeG < child.g) {
                     child.g = tentativeG;
                     child.h = heuristic(child, endGrid);
                     child.f = child.g + child.h;
-                    child.parentId = nodeCurrent.id;
-                    if (!child.isInOpenList) {
-                        child.isInOpenList = true;
-                    }
+                    child.parent = nodeCurrent;
+                    child.isInOpenList = true;
                     openList.add(child);
                 }
             }
         }
 
+        this.searchNanos = System.nanoTime() - searchStartNanos;
+        this.expandedNodes = expanded;
         if (endNode == null) {
             // 起终点之间不存在可通行路径
             offRoadResponse.addOffRoadPoints(roadPath);
@@ -385,9 +470,10 @@ public class OffRoader {
         OffRoadGrid node = endNode;
         while (node != null) {
             pathGrids.add(node);
-            node = parentOf(cellIndex, node);
+            node = node.parent;
         }
         Collections.reverse(pathGrids);
+        long postStartNanos = System.nanoTime();
 
         // 纯越野：搜索代价即累计用时（含坡度与地表折减），
         // 并按时间顺序记录沿途地形：何时进入什么地形、实际速度与被折减到多少、走了多远
@@ -402,7 +488,7 @@ public class OffRoader {
                 double meters = GeoUtils.getDistance(
                         new GlobalCoordinates(previous.center.lat, previous.center.lon),
                         new GlobalCoordinates(grid.center.lat, grid.center.lon));
-                double seconds = offroadStepCost(previous, grid);
+                double seconds = offroadStepCost(previous, grid, meters);
                 String label = grid.surfaceLabel;
                 if (label != null) {
                     if (current == null || !current.getLabel().equals(label)) {
@@ -427,6 +513,8 @@ public class OffRoader {
         }
 
         if (hybrid) {
+            // 道路类型与名称只在最终路径的少量网格上补齐，建图阶段不解析，避免逐格读取路网属性
+            resolveRoadMeta(pathGrids);
             // 混合路由的 g 即累计用时（秒），同时按公路/越野连续段切分明细
             double roadDistance = 0;
             double offRoadDistance = 0;
@@ -502,7 +590,7 @@ public class OffRoader {
                 segmentPoints.add(new GHPoint(current.center.lat, current.center.lon));
                 segmentGrids.add(current);
                 segmentDistance += meters;
-                segmentDuration += hybridStepCost(previous, current);
+                segmentDuration += hybridStepCost(previous, current, meters);
                 double elevationDelta = current.elevation - previous.elevation;
                 if (elevationDelta > 0) {
                     segmentAscent += elevationDelta;
@@ -543,6 +631,7 @@ public class OffRoader {
         for (GHPoint point : path) {
             roadPath.add(point);
         }
+        this.postNanos = System.nanoTime() - postStartNanos;
         offRoadResponse.addOffRoadPoints(roadPath);
         return offRoadResponse;
     }
@@ -700,21 +789,65 @@ public class OffRoader {
     }
 
     /**
-     * 障碍网格合并：相邻网格取并集，减少返回与渲染的多边形数量。
+     * 禁行网格转面：按"先向右扩展、再整行向下扩展"的贪心算法合并成矩形。
+     * 网格边界完全对齐，矩形之间互不重叠，因此不需要 JTS 并集，
+     * 避免上万个面做 overlay 运算带来的秒级开销；相邻矩形共边，视觉上仍然连成整片。
      */
-    private Geometry mergeBarrierPolygons(GeometryFactory geometryFactory, List<Polygon> polygons) {
-        if (polygons.isEmpty()) {
-            return geometryFactory.createMultiPolygon(new Polygon[0]);
+    private Geometry buildBarrierGeometry(GeometryFactory geometryFactory, boolean[][] blockedCells) {
+        int rows = blockedCells.length;
+        int cols = rows == 0 ? 0 : blockedCells[0].length;
+        List<Polygon> parts = new ArrayList<>();
+        boolean[][] used = new boolean[rows][cols];
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                if (!blockedCells[i][j] || used[i][j]) {
+                    continue;
+                }
+                int jEnd = j;
+                while (jEnd + 1 < cols && blockedCells[i][jEnd + 1] && !used[i][jEnd + 1]) {
+                    jEnd++;
+                }
+                int iEnd = i;
+                while (iEnd + 1 < rows && canExtendRow(blockedCells, used, iEnd + 1, j, jEnd)) {
+                    iEnd++;
+                }
+                for (int r = i; r <= iEnd; r++) {
+                    for (int c = j; c <= jEnd; c++) {
+                        used[r][c] = true;
+                    }
+                }
+                parts.add(createCellRectangle(geometryFactory, j, i, jEnd, iEnd));
+            }
         }
-        if (polygons.size() == 1) {
-            return polygons.get(0);
+        return geometryFactory.createMultiPolygon(parts.toArray(new Polygon[0]));
+    }
+
+    /**
+     * 判断下一行的同一列区间是否全部可合并。
+     */
+    private static boolean canExtendRow(boolean[][] blockedCells, boolean[][] used, int row, int fromCol, int toCol) {
+        for (int c = fromCol; c <= toCol; c++) {
+            if (!blockedCells[row][c] || used[row][c]) {
+                return false;
+            }
         }
-        try {
-            return UnaryUnionOp.union(polygons);
-        } catch (RuntimeException e) {
-            // 合并失败时退化为原始网格面，保证接口仍然可用
-            return geometryFactory.createMultiPolygon(polygons.toArray(new Polygon[0]));
-        }
+        return true;
+    }
+
+    /**
+     * 按网格坐标生成矩形面，边界统一用"起点 + 序号 × 步长"计算，保证相邻矩形共边完全重合。
+     */
+    private Polygon createCellRectangle(GeometryFactory geometryFactory, int x0, int y0, int x1, int y1) {
+        double left = gridMinLon + x0 * gridCellWidth;
+        double right = gridMinLon + (x1 + 1) * gridCellWidth;
+        double bottom = gridMinLat + y0 * gridCellHeight;
+        double top = gridMinLat + (y1 + 1) * gridCellHeight;
+        return geometryFactory.createPolygon(new Coordinate[]{
+                new Coordinate(left, bottom),
+                new Coordinate(right, bottom),
+                new Coordinate(right, top),
+                new Coordinate(left, top),
+                new Coordinate(left, bottom)});
     }
 
     /**
@@ -733,10 +866,7 @@ public class OffRoader {
      * 纯越野单步代价（秒）：按坡度方向衰减与地表类型折减后的实际速度计算，
      * 使 A* 主动绕开慢速地表，而不是只按距离选路。
      */
-    private double offroadStepCost(OffRoadGrid from, OffRoadGrid to) {
-        double meters = GeoUtils.getDistance(
-                new GlobalCoordinates(from.center.lat, from.center.lon),
-                new GlobalCoordinates(to.center.lat, to.center.lon));
+    private double offroadStepCost(OffRoadGrid from, OffRoadGrid to, double meters) {
         return meters / (offroadSpeed(from, to) / 3.6);
     }
 
@@ -744,14 +874,11 @@ public class OffRoader {
      * 混合路由单步代价（秒）：公路段按公路速度，越野段按坡度衰减后的越野速度，
      * 并对越野段施加惩罚，使路径在耗时接近时优先走公路。
      */
-    private double hybridStepCost(OffRoadGrid from, OffRoadGrid to) {
+    private double hybridStepCost(OffRoadGrid from, OffRoadGrid to, double meters) {
         boolean onRoad = from.roadSpeedKmh > 0 && to.roadSpeedKmh > 0;
         if (!onRoad) {
-            return offroadStepCost(from, to) * offroadPenalty;
+            return offroadStepCost(from, to, meters) * offroadPenalty;
         }
-        double meters = GeoUtils.getDistance(
-                new GlobalCoordinates(from.center.lat, from.center.lon),
-                new GlobalCoordinates(to.center.lat, to.center.lon));
         double speedKmh = Math.max(5,
                 Math.min(from.roadSpeedKmh, to.roadSpeedKmh) * militaryVehicleType.getRoadSpeedFactor());
         return meters / (speedKmh / 3.6);
@@ -810,6 +937,26 @@ public class OffRoader {
         List<OffRoadResponse.SurfaceSlice> list = new ArrayList<>(surfaces.values());
         list.sort(Comparator.comparingDouble(OffRoadResponse.SurfaceSlice::getDistance).reversed());
         return list;
+    }
+
+    /**
+     * 为最终路径上的公路网格补齐道路类型与名称。
+     * 建图阶段每格都解析名称需要反复读取路网属性，代价很高；路径确定后只剩几十到几百格。
+     */
+    private void resolveRoadMeta(List<OffRoadGrid> pathGrids) {
+        if (roadAccessProvider == null || pathGrids == null) {
+            return;
+        }
+        for (OffRoadGrid grid : pathGrids) {
+            if (grid.roadEdgeId < 0) {
+                continue;
+            }
+            RoadAccessProvider.RoadMeta meta = roadAccessProvider.getRoadMeta(grid.roadEdgeId, grid.roadAdjNode);
+            if (meta != null) {
+                grid.roadLabel = meta.roadLabel() == null ? "" : meta.roadLabel();
+                grid.roadName = meta.roadName() == null ? "" : meta.roadName();
+            }
+        }
     }
 
     /**
@@ -970,18 +1117,54 @@ public class OffRoader {
     }
 
     /**
-     * 根据 parentId（格式为 "x-y"）取回父网格。
+     * 计算网格坡度（度）。
+     * 小网格（100 米以内）取中心与四角共 5 点即可，大网格沿用 12 点采样；
+     * 采样点相距只有十几米，直接用平面距离近似，避免逐格构造测地线对象。
      */
-    private OffRoadGrid parentOf(OffRoadGrid[][] cellIndex, OffRoadGrid node) {
-        if (node.parentId == null) {
-            return null;
+    private double computeGridSlope(double minX, double minY, double cellWidth, double cellHeight) {
+        int sampleCount = cellSideMeters < 100 ? 5 : 12;
+        for (int k = 0; k < sampleCount; k++) {
+            if (sampleCount == 5) {
+                sampleLats[k] = k < 4 ? minY + (k >> 1) * cellHeight : minY + cellHeight / 2;
+                sampleLons[k] = k < 4 ? minX + ((k & 1) == 0 ? 0 : cellWidth) : minX + cellWidth / 2;
+            } else {
+                sampleLats[k] = minY + SLOPE_SAMPLE_OFFSETS[k][0] * cellHeight / 3;
+                sampleLons[k] = minX + SLOPE_SAMPLE_OFFSETS[k][1] * cellWidth / 3;
+            }
         }
-        int separator = node.parentId.indexOf('-');
-        int x = Integer.parseInt(node.parentId.substring(0, separator));
-        int y = Integer.parseInt(node.parentId.substring(separator + 1));
-        if (y < 0 || y >= cellIndex.length || x < 0 || x >= cellIndex[0].length) {
-            return null;
+        double maxHeight = -Double.MAX_VALUE;
+        double minHeight = Double.MAX_VALUE;
+        double maxHeightLat = minY;
+        double maxHeightLon = minX;
+        double minHeightLat = minY;
+        double minHeightLon = minX;
+        for (int k = 0; k < sampleCount; k++) {
+            double height = eleProvider.getEle(sampleLats[k], sampleLons[k]);
+            if (height > maxHeight) {
+                maxHeight = height;
+                maxHeightLat = sampleLats[k];
+                maxHeightLon = sampleLons[k];
+            }
+            if (height < minHeight) {
+                minHeight = height;
+                minHeightLat = sampleLats[k];
+                minHeightLon = sampleLons[k];
+            }
         }
-        return cellIndex[y][x];
+        if (minHeight == Double.MAX_VALUE) {
+            // 全部采样点都没有高程数据
+            return 0;
+        }
+        double horizontal = planarDistance(minHeightLat, minHeightLon, maxHeightLat, maxHeightLon);
+        return horizontal <= 0 ? 0 : Math.toDegrees(Math.atan((maxHeight - minHeight) / horizontal));
+    }
+
+    /**
+     * 小范围内的平面距离近似（米）：纬度 1 度约 110540 米，经度 1 度按当地纬度收缩。
+     */
+    private static double planarDistance(double lat1, double lon1, double lat2, double lon2) {
+        double deltaLat = (lat2 - lat1) * 110540;
+        double deltaLon = (lon2 - lon1) * 111320 * Math.cos(Math.toRadians((lat1 + lat2) / 2));
+        return Math.sqrt(deltaLat * deltaLat + deltaLon * deltaLon);
     }
 }

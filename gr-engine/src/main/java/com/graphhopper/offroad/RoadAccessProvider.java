@@ -1,5 +1,6 @@
 package com.graphhopper.offroad;
 
+import com.graphhopper.offroad.util.GeoBounds;
 import com.graphhopper.util.shapes.GHPoint;
 
 import java.util.Collections;
@@ -26,15 +27,47 @@ public interface RoadAccessProvider {
     }
 
     /**
-     * 公路信息：通行速度、道路类型描述、道路名称与吸附到的路网边。
+     * 查询道路类型与名称。道路名称需要读路网属性，成本较高，
+     * 建图阶段不调用，只在最终路径的少量网格上补齐。
+     * 默认实现返回空信息，表示不提供道路描述。
+     */
+    default RoadMeta getRoadMeta(int edgeId, int adjNode) {
+        return RoadMeta.EMPTY;
+    }
+
+    /**
+     * 把 bbox 内的公路一次性栅格化到规则网格上，返回按网格索引（row * cols + col）存放的
+     * 速度、边 ID 与端点。相比逐格 {@link #getRoad}，避免了对远离公路的空旷格子反复扩圈搜索。
+     * 默认返回 null，表示不支持栅格化，调用方回退到逐格查询。
+     */
+    default RoadGrid rasterizeRoads(GeoBounds bounds, int rows, int cols,
+                                    double cellWidth, double cellHeight) {
+        return null;
+    }
+
+    /**
+     * 公路栅格化结果，三个数组长度均为 rows * cols，速度 0 表示该网格不在公路上。
+     */
+    record RoadGrid(double[] speedKmh, int[] edgeId, int[] adjNode) {
+    }
+
+    /**
+     * 公路信息：通行速度与吸附到的路网边。
+     *
+     * @param edgeId  吸附到的路网边 ID，-1 表示无
+     * @param adjNode 边的另一端点，与 edgeId 一起确定边的方向
+     * @param snapLat 吸附点纬度
+     * @param snapLon 吸附点经度
+     */
+    record RoadAccess(double speedKmh, int edgeId, int adjNode, double snapLat, double snapLon) {
+    }
+
+    /**
+     * 道路类型与名称，用于路径分段展示。
      *
      * @param roadName 道路名称（OSM name/ref），取不到时为空串
-     * @param edgeId   吸附到的路网边 ID，-1 表示无
-     * @param adjNode  边的另一端点，与 edgeId 一起确定边的方向
-     * @param snapLat  吸附点纬度
-     * @param snapLon  吸附点经度
      */
-    record RoadAccess(double speedKmh, String roadLabel, String roadName,
-                      int edgeId, int adjNode, double snapLat, double snapLon) {
+    record RoadMeta(String roadLabel, String roadName) {
+        public static final RoadMeta EMPTY = new RoadMeta("", "");
     }
 }

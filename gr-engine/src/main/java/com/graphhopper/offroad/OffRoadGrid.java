@@ -1,9 +1,6 @@
 package com.graphhopper.offroad;
 
-import com.graphhopper.util.PointList;
 import com.graphhopper.util.shapes.GHPoint;
-
-import java.util.List;
 
 public class OffRoadGrid {
     protected final int x;
@@ -14,9 +11,7 @@ public class OffRoadGrid {
      * 网格中心高程（米），用于区分上坡/下坡的通行速度衰减。
      */
     protected final double elevation;
-    protected final List<GHPoint> coordinates;
-    protected String id;
-    protected String parentId;
+    protected OffRoadGrid parent;
     protected double h = 0;
     protected double g = 0;
     protected double f = 0;
@@ -54,13 +49,11 @@ public class OffRoadGrid {
     protected double roadSnapLat = 0;
     protected double roadSnapLon = 0;
 
-    public OffRoadGrid(int x, int y, double slope, double elevation, GHPoint center, List<GHPoint> coordinates) {
+    public OffRoadGrid(int x, int y, double slope, double elevation, GHPoint center) {
         this.x = x;
         this.y = y;
-        this.id = x + "-" + y;
         this.slope = slope;
         this.elevation = elevation;
         this.center = center;
-        this.coordinates = coordinates;
     }
 }

@@ -53,6 +53,8 @@ logging:
   level:
     root: WARN
     org.heigit: INFO
+    # 越野路径分段耗时日志
+    com.graphhopper.offroad: INFO
 
 ##### openrouteservice specific settings #####
 ors:

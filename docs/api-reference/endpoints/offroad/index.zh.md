@@ -35,7 +35,7 @@ curl -X POST http://localhost:8082/gr/offroad \
 
 ### 1.2 使用演示页面
 
-访问 <http://localhost:8082/gr/ors-cesium-test.html>，切换到「越野路径」标签页：
+访问 <http://localhost:8082/gr/gr-cesium-test.html>，切换到「越野路径」标签页：
 
 1. 在地球上点击选择起点，再点击选择终点；选满两个点后自动计算。
 2. 页面会自动切换为「高德卫星影像」底图，便于判读地形。
@@ -137,7 +137,7 @@ h = octile × grid_interval / (基准速度 / 3.6)
 
 | 指标 | 计算方式 | 尺度 |
 | --- | --- | --- |
-| 网格坡度（通行判定） | 格内 12 点最高/最低点高差 ÷ 水平距离 | 约 `grid_interval` |
+| 网格坡度（通行判定） | 格内 5 点（四角+中心）或 12 点最高/最低点高差 ÷ 水平距离，`grid_interval` < 100 m 用 5 点，否则用 12 点 | 约 `grid_interval` |
 | 剖面坡度（`summary.max_slope`） | 相邻剖面点高差 ÷ 水平距离 | 约 30–100 m |
 
 因此 `summary.max_slope` **可能大于** `max_slope`，后者是判定阈值，前者是路径沿线的实际地形坡度。
@@ -318,7 +318,7 @@ rows  = ceil((纬度跨度 × 111320 + 2h) / grid_interval)
 
 ## 5. 演示页面说明
 
-页面地址：`http://localhost:8082/gr/ors-cesium-test.html`，选择「越野路径」标签页。
+页面地址：`http://localhost:8082/gr/gr-cesium-test.html`，选择「越野路径」标签页。
 
 ### 5.1 控件
 
@@ -439,4 +439,4 @@ java -jar gr-api/target/ors.jar \
 | `gr-engine/src/main/java/com/graphhopper/offroad/util/GeoUtils.java` | 距离计算与网格坡度计算 |
 | `gr-engine/src/main/java/com/graphhopper/offroad/util/GeoBounds.java` | 边界归一化与按距离扩展 |
 | `gr-engine/src/main/java/com/graphhopper/OffRoadResponse.java` | 响应载体 |
-| `gr-api/src/main/resources/static/ors-cesium-test.html` | 演示页面（越野路径标签页） |
+| `gr-api/src/main/resources/static/gr-cesium-test.html` | 演示页面（越野路径标签页） |
