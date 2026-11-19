@@ -20,6 +20,7 @@ Openrouteservice 提供了一组用于不同空间用途的端点：
 此外还有一些技术端点，它们 :warning: _在我们的线上 API 中不可用_：
 
 * [Export 服务](export/index.zh.md)：导出不同交通方式的基础图
+* [自定义路网动态加载](custom-roads/index.zh.md)：运行时把 GeoJSON 路网加载进已构建的路网，无需重启（本实例扩展端点）
 * [Health 服务](health/index.zh.md)：获取正在运行的 openrouteservice 实例的健康状况信息
 * [Status 服务](status/index.zh.md)：获取 openrouteservice 实例的状态信息
 

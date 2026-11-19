@@ -44,13 +44,21 @@ public class OffRoader {
     /**
      * 默认最多网格数量与超时时间。
      */
-    private static final int DEFAULT_MAX_CELLS = 500_000;
+    private static final int DEFAULT_MAX_CELLS = 2_000_000;
     private static final long DEFAULT_TIMEOUT_MS = 60_000;
     /**
      * 混合路由的网格数量上限。路网已改为一次性栅格化，不再逐格查询，
      * 因此可与纯越野使用同一上限。
      */
-    private static final int MAX_HYBRID_CELLS = 500_000;
+    private static final int MAX_HYBRID_CELLS = 2_000_000;
+    /**
+     * 地表覆盖折减下限，避免越野速度被压到接近 0。
+     */
+    private static final double MIN_SURFACE_FACTOR = 0.2;
+    /**
+     * 混合路由公路段速度下限（km/h）。
+     */
+    private static final double MIN_ROAD_SPEED_KMH = 5;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OffRoader.class);
     /**
@@ -81,6 +89,10 @@ public class OffRoader {
     private double offroadSpeedKmh = 25;
     private double offroadPenalty = 1.5;
     /**
+     * 公路段代价系数，用于“越野隐蔽”策略压低公路吸引力；默认 1 表示不惩罚。
+     */
+    private double roadPenalty = 1;
+    /**
      * 军车细分类型，决定上/下坡衰减强度与公路速度折减。
      */
     private MilitaryVehicleType militaryVehicleType = MilitaryVehicleType.WHEELED;
@@ -106,6 +118,16 @@ public class OffRoader {
     private double stepMetersX = 50;
     private double stepMetersY = 50;
     private double stepDiagMeters = 70.7;
+    /**
+     * 走廊半宽与比例、混合路由网格上限、地表折减下限与公路段速度下限，
+     * 均可由请求 hint 覆盖，默认取类内常量。
+     */
+    private double corridorMinMeters = MIN_CORRIDOR_METERS;
+    private double corridorMaxMeters = MAX_CORRIDOR_METERS;
+    private double corridorRatio = CORRIDOR_RATIO;
+    private int maxHybridCells = MAX_HYBRID_CELLS;
+    private double minSurfaceFactor = MIN_SURFACE_FACTOR;
+    private double minRoadSpeedKmh = MIN_ROAD_SPEED_KMH;
     /**
      * 坡度采样的复用缓冲，避免每个网格都新建数组。
      */
@@ -157,6 +179,17 @@ public class OffRoader {
         this.hybrid = roadAccessProvider != null && request.getHints().getBool("hybrid", false);
         this.offroadSpeedKmh = Math.max(1, request.getHints().getDouble("offroad_speed_kmh", 25));
         this.offroadPenalty = Math.max(1, request.getHints().getDouble("offroad_penalty", 1.5));
+        this.roadPenalty = Math.max(1, request.getHints().getDouble("road_penalty", 1));
+        // 走廊范围、混合路由网格上限、地表折减与公路速度下限同样支持 hint 覆盖
+        this.corridorMinMeters = Math.max(1, request.getHints().getDouble("corridor_min_meters", MIN_CORRIDOR_METERS));
+        this.corridorMaxMeters = Math.max(corridorMinMeters,
+                request.getHints().getDouble("corridor_max_meters", MAX_CORRIDOR_METERS));
+        this.corridorRatio = Math.max(0, request.getHints().getDouble("corridor_ratio", CORRIDOR_RATIO));
+        this.maxHybridCells = request.getHints().getInt("max_hybrid_cells", MAX_HYBRID_CELLS);
+        this.minSurfaceFactor = Math.min(1,
+                Math.max(0.01, request.getHints().getDouble("min_surface_factor", MIN_SURFACE_FACTOR)));
+        this.minRoadSpeedKmh = Math.max(0,
+                request.getHints().getDouble("min_road_speed_kmh", MIN_ROAD_SPEED_KMH));
         this.cellSideMeters = gridInterval;
         this.maxSpeedKmh = offroadSpeedKmh;
 
@@ -174,7 +207,7 @@ public class OffRoader {
         double directDistance = GeoUtils.getDistance(
                 new GlobalCoordinates(startPoint.lat, startPoint.lon),
                 new GlobalCoordinates(endPoint.lat, endPoint.lon));
-        double halfWidth = Math.min(MAX_CORRIDOR_METERS, Math.max(MIN_CORRIDOR_METERS, directDistance * CORRIDOR_RATIO));
+        double halfWidth = Math.min(corridorMaxMeters, Math.max(corridorMinMeters, directDistance * corridorRatio));
         // 保证走廊至少覆盖几个网格，避免极短路径时搜索空间过窄
         halfWidth = Math.max(halfWidth, gridInterval * 3);
         GeoBounds corridor = geoBounds.expandBoundsByMeters(halfWidth);
@@ -230,9 +263,9 @@ public class OffRoader {
                     "网格数量 %d 超过上限 %d，请增大 grid_interval 或缩短起终点距离", totalCells, maxCells));
         }
         // 混合路由需要逐格查询附近公路，网格过多会显著拖慢计算
-        if (hybrid && totalCells > MAX_HYBRID_CELLS) {
+        if (hybrid && totalCells > maxHybridCells) {
             throw new IllegalArgumentException(String.format(
-                    "混合路由网格数量 %d 超过上限 %d，请增大 grid_interval 或缩短起终点距离", totalCells, MAX_HYBRID_CELLS));
+                    "混合路由网格数量 %d 超过上限 %d，请增大 grid_interval 或缩短起终点距离", totalCells, maxHybridCells));
         }
         this.cellSideMeters = cellSide;
         this.cellCount = (int) totalCells;
@@ -515,9 +548,10 @@ public class OffRoader {
         if (hybrid) {
             // 道路类型与名称只在最终路径的少量网格上补齐，建图阶段不解析，避免逐格读取路网属性
             resolveRoadMeta(pathGrids);
-            // 混合路由的 g 即累计用时（秒），同时按公路/越野连续段切分明细
+            // 公路/越野连续段切分明细；耗时按真实通行速度统计，不含选路惩罚
             double roadDistance = 0;
             double offRoadDistance = 0;
+            double totalDuration = 0;
             double segmentDistance = 0;
             double segmentDuration = 0;
             double segmentAscent = 0;
@@ -590,7 +624,10 @@ public class OffRoader {
                 segmentPoints.add(new GHPoint(current.center.lat, current.center.lon));
                 segmentGrids.add(current);
                 segmentDistance += meters;
-                segmentDuration += hybridStepCost(previous, current, meters);
+                // 分段与总耗时都用不含公路优先惩罚的实际通行时间
+                double stepSeconds = hybridTravelSeconds(previous, current, meters);
+                segmentDuration += stepSeconds;
+                totalDuration += stepSeconds;
                 double elevationDelta = current.elevation - previous.elevation;
                 if (elevationDelta > 0) {
                     segmentAscent += elevationDelta;
@@ -621,7 +658,7 @@ public class OffRoader {
                     settled.setSurfaces(sortSurfaces(collectSurfaces(segmentGrids)));
                 }
             }
-            offRoadResponse.setDurationSeconds(Math.round(endNode.g));
+            offRoadResponse.setDurationSeconds(Math.round(totalDuration));
             offRoadResponse.setRoadDistance(roadDistance);
             offRoadResponse.setOffRoadDistance(offRoadDistance);
         }
@@ -871,15 +908,25 @@ public class OffRoader {
     }
 
     /**
-     * 混合路由单步代价（秒）：公路段按公路速度，越野段按坡度衰减后的越野速度，
-     * 并对越野段施加惩罚，使路径在耗时接近时优先走公路。
+     * 混合路由单步代价（秒）：在真实通行时间的基础上按路线策略施加偏好系数，
+     * 使路径在耗时接近时倾向公路或越野。该代价只参与 A* 选路，不作为对外展示的耗时。
      */
     private double hybridStepCost(OffRoadGrid from, OffRoadGrid to, double meters) {
+        double seconds = hybridTravelSeconds(from, to, meters);
+        boolean onRoad = from.roadSpeedKmh > 0 && to.roadSpeedKmh > 0;
+        return onRoad ? seconds * roadPenalty : seconds * offroadPenalty;
+    }
+
+    /**
+     * 混合路由单步实际通行时间（秒）：公路段按公路速度，越野段按坡度与地表折减后的越野速度，
+     * 不含公路优先惩罚，用于对外的耗时统计，避免调高优先系数后预计时间虚增。
+     */
+    private double hybridTravelSeconds(OffRoadGrid from, OffRoadGrid to, double meters) {
         boolean onRoad = from.roadSpeedKmh > 0 && to.roadSpeedKmh > 0;
         if (!onRoad) {
-            return offroadStepCost(from, to, meters) * offroadPenalty;
+            return offroadStepCost(from, to, meters);
         }
-        double speedKmh = Math.max(5,
+        double speedKmh = Math.max(minRoadSpeedKmh,
                 Math.min(from.roadSpeedKmh, to.roadSpeedKmh) * militaryVehicleType.getRoadSpeedFactor());
         return meters / (speedKmh / 3.6);
     }
@@ -1093,7 +1140,7 @@ public class OffRoader {
             factor = 1;
         }
         // 地表覆盖折减：林地/灌丛/建成区等按类别降低越野速度（网格构建时已缓存）
-        factor *= Math.max(0.2, to.surfaceFactor);
+        factor *= Math.max(minSurfaceFactor, to.surfaceFactor);
         return offroadSpeedKmh * factor;
     }
 

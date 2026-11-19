@@ -364,6 +364,16 @@ public class BaseGraph implements Graph, Closeable {
         store.setFrozen(true);
     }
 
+    /**
+     * 允许运行时动态追加路网前解除冻结状态。
+     * <p>
+     * 注意：调用方必须保证此时没有并发的路由请求，并在修改完成后重新调用 {@link #freeze()}，
+     * 否则图结构不再满足 CH 等预处理结构的前置条件。
+     */
+    public synchronized void unfreeze() {
+        store.setFrozen(false);
+    }
+
     public synchronized boolean isFrozen() {
         return store.getFrozen();
     }

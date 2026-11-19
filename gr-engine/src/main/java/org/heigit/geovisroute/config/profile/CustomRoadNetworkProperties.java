@@ -47,4 +47,9 @@ public class CustomRoadNetworkProperties {
      */
     @JsonProperty("tags")
     private Map<String, String> tags = new LinkedHashMap<>();
+    /**
+     * 运行时接口动态加载的路网记录存储目录，建图（重新导入 OSM）时会自动重放其中的记录。
+     */
+    @JsonProperty("storage_dir")
+    private String storageDir = "./custom-roads";
 }

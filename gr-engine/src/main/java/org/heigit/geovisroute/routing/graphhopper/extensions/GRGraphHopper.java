@@ -71,6 +71,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -125,6 +127,43 @@ public class GRGraphHopper extends GraphHopperGtfs {
         return profileProperties;
     }
 
+    /**
+     * 当前 profile 名，用于动态路网记录按 profile 过滤。
+     */
+    public String getProfileName() {
+        return profileProperties == null ? null : profileProperties.getProfileName();
+    }
+
+    /**
+     * 动态路网记录的持久化目录。
+     */
+    public Path getCustomRoadStorageDir() {
+        String dir = profileProperties != null && profileProperties.getBuild() != null
+                && profileProperties.getBuild().getCustomRoads() != null
+                ? profileProperties.getBuild().getCustomRoads().getStorageDir()
+                : null;
+        return Path.of(dir == null || dir.isBlank() ? "./custom-roads" : dir);
+    }
+
+    /**
+     * 运行时更新路网不支持时返回原因，支持则返回 null。
+     * <p>
+     * Core / Core-LM / Fast-Isochrone 的预计算结构在新增边后会失效，当前实现不重建这些结构，
+     * 因此启用时直接拒绝运行时更新，避免静默返回错误结果。
+     */
+    public String getRuntimeUpdateBlockReason() {
+        if (corePreparationHandler.isEnabled()) {
+            return "Core preparation is enabled";
+        }
+        if (coreLMPreparationHandler.isEnabled()) {
+            return "Core LM preparation is enabled";
+        }
+        if (fastIsochroneFactory.isEnabled()) {
+            return "Fast isochrone preparation is enabled";
+        }
+        return null;
+    }
+
     private GraphHopperConfig config;
 
     public GRGraphHopper(GraphProcessContext processContext, EngineProperties engineProperties, ProfileProperties profileProperties,GraphHopperConfig ghConfig) {
@@ -159,16 +198,45 @@ public class GRGraphHopper extends GraphHopperGtfs {
     protected void importOSM() {
         super.importOSM();
 
-        if (profileProperties == null || profileProperties.getBuild() == null) {
+        CustomRoadNetworkProperties customRoads = profileProperties == null || profileProperties.getBuild() == null
+                ? null
+                : profileProperties.getBuild().getCustomRoads();
+        if (customRoads != null && customRoads.getFile() != null && !customRoads.getFile().isBlank()) {
+            if (Files.isRegularFile(Path.of(customRoads.getFile()))) {
+                LOGGER.info("正在从 '{}' 导入自定义路网", customRoads.getFile());
+                new CustomRoadNetworkImporter(getBaseGraph(), getEncodingManager(), getOSMParsers())
+                        .importRoads(customRoads);
+            } else {
+                LOGGER.warn("配置的自定义路网文件不存在，跳过: {}", customRoads.getFile());
+            }
+        }
+        replayDynamicRoads(customRoads);
+    }
+
+    /**
+     * 建图时重放通过运行时接口动态加载的自定义路网记录。
+     */
+    private void replayDynamicRoads(CustomRoadNetworkProperties customRoads) {
+        if (profileProperties == null) {
             return;
         }
-        CustomRoadNetworkProperties customRoads = profileProperties.getBuild().getCustomRoads();
-        if (customRoads == null || customRoads.getFile() == null || customRoads.getFile().isBlank()) {
-            return;
+        String storageDir = customRoads == null || customRoads.getStorageDir() == null
+                || customRoads.getStorageDir().isBlank()
+                ? "./custom-roads"
+                : customRoads.getStorageDir();
+        List<CustomRoadStore.StoredUpload> uploads = new CustomRoadStore().list(Path.of(storageDir));
+        int replayed = 0;
+        for (CustomRoadStore.StoredUpload upload : uploads) {
+            if (!CustomRoadStore.appliesTo(upload, profileProperties.getProfileName())) {
+                continue;
+            }
+            LOGGER.info("正在重放动态路网 {}（mode={}）到 profile {}",
+                    upload.getFileName(), upload.getMode(), profileProperties.getProfileName());
+            new CustomRoadNetworkImporter(getBaseGraph(), getEncodingManager(), getOSMParsers())
+                    .importGeoJson(upload.getGeoJson(), CustomRoadStore.toConfig(upload));
+            replayed++;
         }
-        LOGGER.info("正在从 '{}' 导入自定义路网", customRoads.getFile());
-        new CustomRoadNetworkImporter(getBaseGraph(), getEncodingManager(), getOSMParsers())
-                .importRoads(customRoads);
+        LOGGER.info("已重放动态路网 {} 条到 profile {}", replayed, profileProperties.getProfileName());
     }
 
     @Override

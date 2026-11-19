@@ -75,7 +75,8 @@ public class CustomRoadNetworkImporter {
     private final BaseGraph graph;
     private final EncodingManager encodingManager;
     private final OSMParsers osmParsers;
-    private long nextWayId = -1;
+    // 动态道路使用超出真实 OSM way id 范围的合成 id，避免与 OSM 数据冲突。
+    private long nextWayId = 2_000_000_000L;
 
     public CustomRoadNetworkImporter(BaseGraph graph, EncodingManager encodingManager, OSMParsers osmParsers) {
         this.graph = graph;
@@ -83,33 +84,45 @@ public class CustomRoadNetworkImporter {
         this.osmParsers = osmParsers;
     }
 
-    public void importRoads(CustomRoadNetworkProperties config) {
+    public ImportSummary importRoads(CustomRoadNetworkProperties config) {
         Path file = Path.of(config.getFile());
         if (!Files.isRegularFile(file)) {
             throw new IllegalArgumentException("Custom road network file not found: " + file.toAbsolutePath());
         }
 
-        List<RoadFeature> features;
+        String content;
         try {
-            features = readFeatures(file);
+            content = Files.readString(file);
         } catch (IOException e) {
             throw new IllegalStateException("Failed to read custom road network file: " + file.toAbsolutePath(), e);
         }
+        return importGeoJson(content, config, file.toAbsolutePath().toString());
+    }
+
+    /**
+     * 直接导入内存中的 GeoJSON 文本，供运行时动态加载路网使用。
+     */
+    public ImportSummary importGeoJson(String geoJson, CustomRoadNetworkProperties config) {
+        return importGeoJson(geoJson, config, "runtime-api");
+    }
+
+    private ImportSummary importGeoJson(String geoJson, CustomRoadNetworkProperties config, String source) {
+        List<RoadFeature> features = readFeatures(geoJson);
         if (features.isEmpty()) {
-            LOGGER.warn("自定义路网文件中未找到线状几何数据: {}", file.toAbsolutePath());
-            return;
+            LOGGER.warn("自定义路网中未找到线状几何数据: {}", source);
+            return new ImportSummary(config.getMode(), 0, 0, 0, 0, 0);
         }
 
         String mode = config.getMode() == null ? "add" : config.getMode().trim().toLowerCase(Locale.ROOT);
-        switch (mode) {
-            case "overlay" -> overlayRoads(features, config, file);
-            case "add" -> addRoads(features, config, file);
+        return switch (mode) {
+            case "overlay" -> overlayRoads(features, config, source);
+            case "add" -> addRoads(features, config, source);
             default -> throw new IllegalArgumentException(
                     "Unknown custom_roads.mode '" + config.getMode() + "', expected 'add' or 'overlay'");
-        }
+        };
     }
 
-    private void addRoads(List<RoadFeature> features, CustomRoadNetworkProperties config, Path file) {
+    private ImportSummary addRoads(List<RoadFeature> features, CustomRoadNetworkProperties config, String source) {
         double snapRadius = config.getSnapRadius() == null ? 0d : config.getSnapRadius();
         Map<Long, Integer> customNodes = new HashMap<>();
         LocationIndex locationIndex = snapRadius > 0 ? buildLocationIndex(features, snapRadius) : null;
@@ -144,15 +157,15 @@ public class CustomRoadNetworkImporter {
         }
 
         if (createdNodes == 0 && createdEdges == 0) {
-            LOGGER.warn("自定义路网未创建任何节点或边，请检查 GeoJSON 内容和标签: {}",
-                    file.toAbsolutePath());
+            LOGGER.warn("自定义路网未创建任何节点或边，请检查 GeoJSON 内容和标签: {}", source);
         } else {
             LOGGER.info("已导入自定义路网 {}: nodes={}, edges={}, skippedSegments={}, snapRadius={}m",
-                    file.toAbsolutePath(), createdNodes, createdEdges, skippedWays, snapRadius);
+                    source, createdNodes, createdEdges, skippedWays, snapRadius);
         }
+        return new ImportSummary("add", createdNodes, createdEdges, 0, 0, skippedWays);
     }
 
-    private void overlayRoads(List<RoadFeature> features, CustomRoadNetworkProperties config, Path file) {
+    private ImportSummary overlayRoads(List<RoadFeature> features, CustomRoadNetworkProperties config, String source) {
         double tolerance = config.getMatchTolerance() == null ? 10d : config.getMatchTolerance();
         if (tolerance <= 0) {
             throw new IllegalArgumentException("custom_roads.match_tolerance must be greater than 0");
@@ -168,7 +181,7 @@ public class CustomRoadNetworkImporter {
         if (hgvStorage == null && encodedValues.isEmpty()) {
             LOGGER.info("跳过自定义路网叠加: 当前 profile 既没有 ext_storages.HeavyVehicle (restrictions: true) "
                     + "也没有可用的 encoded value {}", ENCODED_VALUE_KEYS.values());
-            return;
+            return new ImportSummary("overlay", 0, 0, 0, 0, features.size());
         }
 
         LocationIndex locationIndex = buildLocationIndex(features, tolerance);
@@ -202,8 +215,9 @@ public class CustomRoadNetworkImporter {
 
         LOGGER.info("自定义路网叠加来自 {}: matchedFeatures={}, matchedEdges={}, skippedFeatures={}, "
                         + "tolerance={}m, hgvStorage={}, encodedValues={}",
-                file.toAbsolutePath(), matchedFeatures, matchedEdges, skippedFeatures, tolerance,
+                source, matchedFeatures, matchedEdges, skippedFeatures, tolerance,
                 hgvStorage != null, encodedValues.keySet());
+        return new ImportSummary("overlay", 0, 0, matchedFeatures, matchedEdges, skippedFeatures);
     }
 
     private HeavyVehicleAttributesGraphStorage findUsableHgvStorage() {
@@ -527,8 +541,8 @@ public class CustomRoadNetworkImporter {
         return (latKey << 32) | (lonKey & 0xFFFFFFFFL);
     }
 
-    private List<RoadFeature> readFeatures(Path file) throws IOException {
-        JSONObject root = new JSONObject(Files.readString(file));
+    private List<RoadFeature> readFeatures(String geoJson) {
+        JSONObject root = new JSONObject(geoJson);
         List<RoadFeature> features = new ArrayList<>();
         String type = root.optString("type");
         if ("FeatureCollection".equals(type)) {
@@ -627,6 +641,52 @@ public class CustomRoadNetworkImporter {
 
         private RoadFeature(Map<String, String> tags) {
             this.tags = tags;
+        }
+    }
+
+    /**
+     * 单次自定义路网导入的统计结果。
+     */
+    public static final class ImportSummary {
+        private final String mode;
+        private final int nodesAdded;
+        private final int edgesAdded;
+        private final int matchedFeatures;
+        private final int matchedEdges;
+        private final int skipped;
+
+        public ImportSummary(String mode, int nodesAdded, int edgesAdded,
+                             int matchedFeatures, int matchedEdges, int skipped) {
+            this.mode = mode == null ? "add" : mode;
+            this.nodesAdded = nodesAdded;
+            this.edgesAdded = edgesAdded;
+            this.matchedFeatures = matchedFeatures;
+            this.matchedEdges = matchedEdges;
+            this.skipped = skipped;
+        }
+
+        public String getMode() {
+            return mode;
+        }
+
+        public int getNodesAdded() {
+            return nodesAdded;
+        }
+
+        public int getEdgesAdded() {
+            return edgesAdded;
+        }
+
+        public int getMatchedFeatures() {
+            return matchedFeatures;
+        }
+
+        public int getMatchedEdges() {
+            return matchedEdges;
+        }
+
+        public int getSkipped() {
+            return skipped;
         }
     }
 }

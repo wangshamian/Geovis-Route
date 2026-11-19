@@ -90,6 +90,7 @@
     <button class="tab" data-tab="iso">等时线</button>
     <button class="tab" data-tab="offroad">越野路径</button>
     <button class="tab" data-tab="hybrid">公路+越野</button>
+    <button class="tab" data-tab="roads">路网管理</button>
   </div>
 
   <div class="row">
@@ -333,9 +334,12 @@
       <span style="color:#777">km/h</span>
     </div>
     <div class="row">
-      <label class="lbl">公路优先</label>
-      <input type="number" id="hybrid-penalty" value="1.5" min="1" max="10" step="0.5" />
-      <span style="color:#777">倍，越大越倾向走公路</span>
+      <label class="lbl">路线策略</label>
+      <select id="hybrid-strategy">
+        <option value="time">时间最优</option>
+        <option value="road" selected>公路优先</option>
+        <option value="conceal">越野隐蔽</option>
+      </select>
     </div>
     <div class="pts" id="hybrid-pts">起点/终点：在地球上点击选点</div>
     <div class="result" id="hybrid-result"></div>
@@ -343,6 +347,52 @@
       <span style="color:#555;font-size:12px;flex:1">公路段按路网速度，越野段按上/下坡分别衰减</span>
       <button class="act secondary" id="hybrid-cancel" style="display:none;color:#b3261e;border-color:#b3261e">取消</button>
     </div>
+  </div>
+
+  <div id="tab-roads" style="display:none">
+    <div class="row">
+      <label class="lbl">GeoJSON</label>
+      <input type="file" id="roads-file" accept=".geojson,.json,application/geo+json,application/json" style="flex:1" />
+    </div>
+    <div class="row">
+      <label class="lbl">目标 profile</label>
+      <div id="roads-profiles" style="flex:1;color:#222;display:flex;gap:10px;flex-wrap:wrap">
+        <label><input type="checkbox" value="driving-car" checked /> driving-car</label>
+        <label><input type="checkbox" value="driving-hgv" checked /> driving-hgv</label>
+        <label><input type="checkbox" value="driving-military" checked /> driving-military</label>
+      </div>
+    </div>
+    <div class="row">
+      <label class="lbl">模式</label>
+      <select id="roads-mode">
+        <option value="add" selected>add · 新增道路</option>
+        <option value="overlay">overlay · 覆盖已有道路属性</option>
+      </select>
+    </div>
+    <div class="row">
+      <label class="lbl">吸附半径</label>
+      <input type="number" id="roads-snap" value="25" min="0" max="500" step="1" />
+      <span style="color:#777">米（add）</span>
+    </div>
+    <div class="row">
+      <label class="lbl">匹配容差</label>
+      <input type="number" id="roads-tolerance" value="20" min="1" max="200" step="1" />
+      <span style="color:#777">米（overlay）</span>
+    </div>
+    <div class="row">
+      <label class="lbl">overlay 字段</label>
+      <input type="text" id="roads-tags" value="maxheight,maxwidth,maxweight,maxlength,maxaxleload,maxgradient,maxforddepth,maxbridgeload" />
+    </div>
+    <div class="row">
+      <label class="lbl">持久化</label>
+      <label style="flex:1;color:#222"><input type="checkbox" id="roads-persist" checked /> 保存记录，重启或删图重建后自动重放</label>
+    </div>
+    <div class="row">
+      <button class="act" id="roads-apply" type="button">加载到路网</button>
+      <button class="act secondary" id="roads-list" type="button">刷新已保存记录</button>
+    </div>
+    <div class="result" id="roads-result"></div>
+    <div class="result" id="roads-records"></div>
   </div>
 
   <div class="row" style="margin-top:8px">
@@ -480,7 +530,7 @@ const hybridMilitaryTypeEl = document.getElementById('hybrid-military-type');
 const hybridGridEl = document.getElementById('hybrid-grid');
 const hybridMaxSlopeEl = document.getElementById('hybrid-maxslope');
 const hybridSpeedEl = document.getElementById('hybrid-speed');
-const hybridPenaltyEl = document.getElementById('hybrid-penalty');
+const hybridStrategyEl = document.getElementById('hybrid-strategy');
 const hybridPtsEl = document.getElementById('hybrid-pts');
 const hybridResultEl = document.getElementById('hybrid-result');
 const hybridActionsEl = document.getElementById('hybrid-actions');
@@ -1435,13 +1485,12 @@ async function computeOffroad() {
   }
 }
 
-// 地表构成说明：林地 1.20 km ×0.6 · 建成区 0.40 km ×0.6
+// 地表构成说明：林地 1.20 km · 建成区 0.40 km
 function surfaceText(surfaces) {
   if (!Array.isArray(surfaces) || !surfaces.length) return '';
   return surfaces.map(s => {
     const km = ((s.distance || 0) / 1000).toFixed(2);
-    const factor = typeof s.speed_factor === 'number' && s.speed_factor < 1 ? ` ×${s.speed_factor}` : '';
-    return `${s.label} ${km} km${factor}`;
+    return `${s.label} ${km} km`;
   }).join(' · ');
 }
 
@@ -1464,7 +1513,7 @@ function terrainColor(label) {
   return TERRAIN_COLORS[label] || '#78909c';
 }
 
-// 地形时间线：0:00–3:12 林地 · 1.20 km · 8.2 km/h（×0.6）
+// 地形时间线：林地 · 1.20 km · 8.2 km/h · 用时 3:12
 function formatTimelineClock(seconds) {
   const t = Math.max(0, Math.round(seconds || 0));
   const h = Math.floor(t / 3600);
@@ -1475,17 +1524,39 @@ function formatTimelineClock(seconds) {
   return h > 0 ? `${h}:${mm}:${ss}` : `${m}:${ss}`;
 }
 
-// 逐段展示：什么时间进入什么地形、速度多少、走了多远
+// 逐段展示：什么地形、走了多远、速度多少、这一段花了多久
 function terrainTimelineText(timeline) {
   if (!Array.isArray(timeline) || !timeline.length) return '';
   return timeline.map(t => {
-    const from = formatTimelineClock(t.start_time);
-    const to = formatTimelineClock((t.start_time || 0) + (t.duration || 0));
     const km = ((t.distance || 0) / 1000).toFixed(2);
     const speed = typeof t.speed_kmh === 'number' ? `${t.speed_kmh.toFixed(1)} km/h` : '—';
-    const factor = typeof t.speed_factor === 'number' && t.speed_factor < 1 ? `（×${t.speed_factor}）` : '';
-    return `${from}–${to} ${t.label} · ${km} km · ${speed}${factor}`;
+    const spent = formatTimelineClock(t.duration);
+    return `${t.label} · ${km} km · ${speed} · 用时 ${spent}`;
   }).join('<br>');
+}
+
+// 分段过多时的缩略描述：按地表类型合并段数与里程，不再逐段列出时间
+function terrainTimelineSummary(timeline) {
+  const groups = new Map();
+  timeline.forEach(t => {
+    const item = groups.get(t.label) || { label: t.label, count: 0, distance: 0, speeds: [] };
+    item.count += 1;
+    item.distance += t.distance || 0;
+    if (typeof t.speed_kmh === 'number') item.speeds.push(t.speed_kmh);
+    groups.set(t.label, item);
+  });
+  return Array.from(groups.values())
+    .sort((a, b) => b.distance - a.distance)
+    .map(g => {
+      const km = (g.distance / 1000).toFixed(2);
+      const lessons = g.speeds.length;
+      const minSpeed = lessons ? Math.min(...g.speeds) : null;
+      const maxSpeed = lessons ? Math.max(...g.speeds) : null;
+      const speed = lessons === 0 ? '—'
+        : (Math.abs(maxSpeed - minSpeed) < 0.05 ? `${maxSpeed.toFixed(1)} km/h` : `${minSpeed.toFixed(1)}–${maxSpeed.toFixed(1)} km/h`);
+      return `${g.label} ${g.count} 段 · ${km} km · ${speed}`;
+    })
+    .join(' · ');
 }
 
 // 禁行地表说明：避开禁行地表 23 格（水体 20 · 湿地 3）
@@ -1497,6 +1568,9 @@ function blockedSurfaceText(summary) {
     .map(([label, count]) => `${label} ${count}`);
   return `避开禁行地表 ${cells} 格` + (parts.length ? `（${parts.join(' · ')}）` : '');
 }
+
+// 地形时间线超过该条数时改为缩略描述，坡度图也退化为简单曲线
+const OFFROAD_DETAIL_LIMIT = 20;
 
 function drawOffroad(data) {
   removeEntities(offroadShapes);
@@ -1564,22 +1638,23 @@ function drawOffroad(data) {
   const distanceText = summary.distance != null ? (summary.distance / 1000).toFixed(2) + ' km' : '—';
   const durationText = summary.duration != null ? formatDuration(summary.duration) : '—';
   offroadProfile = data.elevation || null;
-  const vehicleOption = Array.from(offroadVehicleEl.options).find(o => o.value === data.vehicle);
-  const vehicleText = vehicleOption ? vehicleOption.text : (data.vehicle || '-');
 
   offroadResultEl.style.display = 'block';
   const pathSurfaceText = surfaceText(data.surfaces);
-  const timelineText = terrainTimelineText(data.surface_timeline);
+  // 分段过多时不再逐条展开时间线，改为按地表类型汇总，避免结果面板被撑得过长
+  const timeline = Array.isArray(data.surface_timeline) ? data.surface_timeline : [];
+  const condensed = timeline.length > OFFROAD_DETAIL_LIMIT;
+  const timelineText = condensed
+    ? `共 ${timeline.length} 段（缩略）：${terrainTimelineSummary(timeline)}`
+    : terrainTimelineText(data.surface_timeline);
   const offroadBlockedText = blockedSurfaceText(summary);
   offroadResultEl.innerHTML =
     `<div class="big">${distanceText} · 约 ${durationText}</div>` +
-    `<div style="color:#555;margin-top:4px">交通工具 ${vehicleText} · 点 ${coords.length} 个 · 网格 ${data.grid_interval} m · 坡度阈值 ${data.max_slope}°</div>` +
-    `<div style="color:#555;margin-top:2px">剖面最大坡度 ${num(summary.max_slope, '°')} · 平均 ${num(summary.avg_slope, '°')} · 爬升 ${num(summary.ascend, ' m')} · 下降 ${num(summary.descend, ' m')}</div>` +
-    `<div style="color:#555;margin-top:2px">障碍网格 ${summary.barrier_count != null ? summary.barrier_count : barrierPolygons.length} 个</div>` +
+    `<div style="color:#555;margin-top:4px">剖面最大坡度 ${num(summary.max_slope, '°')} · 平均 ${num(summary.avg_slope, '°')} · 爬升 ${num(summary.ascend, ' m')} · 下降 ${num(summary.descend, ' m')}</div>` +
     (pathSurfaceText ? `<div style="color:#555;margin-top:2px">经过地表 ${pathSurfaceText}</div>` : '') +
     (timelineText ? `<div style="color:#555;margin-top:4px">地形时间线<br>${timelineText}</div>` : '') +
     (offroadBlockedText ? `<div style="color:#8a5a00;margin-top:2px">${offroadBlockedText}</div>` : '') +
-    elevationProfileHtml(data.elevation, null, data.surface_timeline);
+    elevationProfileHtml(data.elevation, null, data.surface_timeline, condensed);
   offroadActionsEl.style.display = 'flex';
   offroadCancelEl.style.display = 'none';
   bindOffroadProfileHover();
@@ -1601,18 +1676,11 @@ async function computeHybrid() {
   const gridInterval = Number(hybridGridEl.value);
   const maxSlope = Number(hybridMaxSlopeEl.value);
   const offroadSpeed = Number(hybridSpeedEl.value);
-  const penalty = Number(hybridPenaltyEl.value);
+  const strategy = hybridStrategyEl.value;
   if (!(gridInterval >= 10 && gridInterval <= 1000)) { showError('网格间距需在 10~1000 米之间'); return; }
   if (!(maxSlope >= 1 && maxSlope <= 60)) { showError('最大坡度需在 1~60 度之间'); return; }
   if (!(offroadSpeed > 0 && offroadSpeed <= 80)) { showError('越野速度需在 0~80 km/h 之间'); return; }
-  if (!(penalty >= 1 && penalty <= 10)) { showError('公路优先系数需在 1~10 之间'); return; }
-
-  // 混合路由同样使用影像底图，便于判读公路与地形
-  if (basemapEl.value !== 'esri-img') {
-    basemapEl.value = 'esri-img';
-    setBaseLayer('esri-img');
-    renderHybridMarkers();
-  }
+  if (!['time', 'road', 'conceal'].includes(strategy)) { showError('路线策略取值不合法'); return; }
 
   const body = {
     coordinates: hybridPoints.map(p => [p[1], p[0]]), // 接口需要 [lon, lat]
@@ -1622,7 +1690,7 @@ async function computeHybrid() {
     profile: hybridProfileEl.value,
     military_type: hybridMilitaryTypeEl.value,
     offroad_speed_kmh: offroadSpeed,
-    offroad_penalty: penalty
+    strategy: strategy
   };
 
   if (hybridAbort) hybridAbort.abort();
@@ -1797,7 +1865,7 @@ function drawHybrid(data) {
   const hybridBlockedText = blockedSurfaceText(summary);
   hybridResultEl.innerHTML =
     `<div class="big">${distanceText} · 约 ${durationText}</div>` +
-    `<div style="color:#555;margin-top:4px">${data.profile || hybridProfileEl.value} · ${data.military_type_label || '轮式军车'} · 越野 ${data.offroad_speed_kmh ?? '—'} km/h · 公路优先 ${data.offroad_penalty ?? '—'} 倍 · 网格 ${data.grid_interval} m</div>` +
+    `<div style="color:#555;margin-top:4px">${data.profile || hybridProfileEl.value} · ${data.military_type_label || '轮式军车'} · 越野 ${data.offroad_speed_kmh ?? '—'} km/h · ${data.strategy_label || '公路优先'} · 网格 ${data.grid_interval} m</div>` +
     `<div style="margin-top:4px;font-size:12px"><span style="color:#1a73e8">━ 公路段</span>　<span style="color:#e8710a">━ 越野段</span></div>` +
     `<div style="color:#555;margin-top:2px">剖面最大坡度 ${num(summary.max_slope, '°')} · 平均 ${num(summary.avg_slope, '°')} · 爬升 ${num(summary.ascend, ' m')} · 下降 ${num(summary.descend, ' m')}</div>` +
     (hybridBlockedText ? `<div style="color:#8a5a00;margin-top:2px">${hybridBlockedText}</div>` : '') +
@@ -1827,7 +1895,7 @@ function highlightHybridSegment(index) {
   if (target) viewer.flyTo(target, { duration: 1.0 });
 }
 
-function elevationProfileHtml(profile, segments, terrain) {
+function elevationProfileHtml(profile, segments, terrain, simplified = false) {
   if (!profile || !Array.isArray(profile.samples) || profile.samples.length < 2) return '';
   const w = 300, h = 88, padX = 4, padY = 12;
   const dist = profile.distance || profile.samples[profile.samples.length - 1].distance || 1;
@@ -1839,6 +1907,21 @@ function elevationProfileHtml(profile, segments, terrain) {
     y: h - padY - ((s.ele - min) / span) * (h - 2 * padY),
     d: s.distance
   }));
+  if (simplified) {
+    // 缩略模式：只保留一条抽稀后的高程曲线，不做分段着色、地形分界与 hover 交互
+    const step = Math.max(1, Math.ceil(pts.length / 60));
+    const sample = pts.filter((p, i) => i % step === 0 || i === pts.length - 1);
+    const line = sample.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+    const area = `${sample[0].x.toFixed(1)},${h - padY} ${line} ${sample[sample.length - 1].x.toFixed(1)},${h - padY}`;
+    return `
+      <div id="offroad-profile-tip" style="margin-top:6px;color:#555;min-height:18px">距离 ${(dist / 1000).toFixed(2)} km · 最高 ${max} m · 最低 ${min} m</div>
+      <svg id="offroad-profile" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block;margin-top:2px;background:#fff;border-radius:4px;max-width:100%">
+        <polygon points="${area}" fill="#e8710a" fill-opacity="0.18"></polygon>
+        <polyline points="${line}" fill="none" stroke="#e8710a" stroke-width="2"></polyline>
+        <text x="${padX}" y="${padY - 2}" font-size="10" fill="#666">${max} m</text>
+        <text x="${padX}" y="${h - 2}" font-size="10" fill="#666">${min} m</text>
+      </svg>`;
+  }
   const bands = Array.isArray(segments) ? segments.filter(s => typeof s.distance === 'number') : [];
   const terrainBands = Array.isArray(terrain)
     ? terrain.filter(t => typeof t.start_distance === 'number' && t.distance > 0)
@@ -1942,7 +2025,9 @@ function bindOffroadProfileHover() {
   if (!svg || !tip || !offroadProfile || !Array.isArray(offroadProfile.samples)) return;
   const samples = offroadProfile.samples;
   if (samples.length < 2) return;
+  // 缩略模式下剖面图只有一条简单曲线，没有 hover 图层，直接跳过联动绑定
   const hover = svg.querySelector('#offroad-profile-hover');
+  if (!hover) return;
   const line = hover.querySelector('line');
   const circle = hover.querySelector('circle');
   const w = 300, h = 88, padX = 4, padY = 12;
@@ -2228,6 +2313,7 @@ function switchTab(tab) {
   document.getElementById('tab-iso').style.display = tab === 'iso' ? '' : 'none';
   document.getElementById('tab-offroad').style.display = tab === 'offroad' ? '' : 'none';
   document.getElementById('tab-hybrid').style.display = tab === 'hybrid' ? '' : 'none';
+  document.getElementById('tab-roads').style.display = tab === 'roads' ? '' : 'none';
   // 地形坡度在越野路径页与混合页都需要，其他页面用椭球体
   applyTerrainForTab(tab);
   // 越野/混合页默认使用卫星影像底图；切回其他 tab 时恢复高德路网
@@ -2246,7 +2332,12 @@ function switchTab(tab) {
       ? '点击地球选等时线中心点；再点一次会以新点重新计算。<br />范围值支持多级，用逗号分隔（最多 5 级），如 300,600,900。'
       : tab === 'offroad'
         ? '按网格坡度计算可直接通行的越野路径，自动使用卫星影像底图并显示高程剖面。<br />点击选起点，再点一次选终点；网格间距越小越精细，但计算越慢。可调整坡度阈值、障碍显示与地形起伏，结果支持导出 GPX/GeoJSON。'
-        : '公路+越野混合（军车）：网格落在公路上时按路网速度计算，否则按越野速度并结合坡度衰减（上坡更慢、下坡仅适度减速）。军车类型会改变越野基准速度、上下坡衰减强度与公路速度折减：轮式 30 km/h、履带 20 km/h（公路速度折减大）、后勤 15 km/h（更偏好公路）。<br />点击选起点，再点一次选终点；结果给出分段明细。';
+        : tab === 'hybrid'
+          ? '公路+越野混合（军车）：网格落在公路上时按路网速度计算，否则按越野速度并结合坡度衰减（上坡更慢、下坡仅适度减速）。军车类型会改变越野基准速度、上下坡衰减强度与公路速度折减：轮式 30 km/h、履带 20 km/h、后勤 15 km/h。<br />路线策略：时间最优按真实耗时选路；公路优先在耗时接近时倾向路网；越野隐蔽则提高公路通行代价、尽量走越野。<br />点击选起点，再点一次选终点；结果给出分段明细。'
+          : '运行时把一个 GeoJSON 路网文件加载进已构建的路网，无需重启。<br />add：把线状要素作为新道路注入路网（吸附半径内连接最近节点）；overlay：按几何匹配已有 OSM 边并覆盖限高/限宽/限重等属性。<br />更新期间其他图相关请求会返回 503“路网更新中”；勾选持久化后，重启或删除 graphs 重建时会自动重放记录。';
+  if (tab === 'roads') {
+    refreshRoadsList();
+  }
   clearOverlays();
 }
 
@@ -2364,19 +2455,18 @@ if (viewer) {
   });
   offroadExagEl.addEventListener('input', () => setVerticalExaggeration(Number(offroadExagEl.value)));
   // 混合页参数变化时，若已有起终点则重新计算
-  [hybridGridEl, hybridMaxSlopeEl, hybridSpeedEl, hybridPenaltyEl, hybridProfileEl].forEach(el =>
+  [hybridGridEl, hybridMaxSlopeEl, hybridSpeedEl, hybridStrategyEl, hybridProfileEl].forEach(el =>
     el.addEventListener('change', () => { if (activeTab === 'hybrid' && hybridPoints.length === 2) computeHybrid(); }));
-  // 切换军车类型时带出该类型的默认越野速度与公路优先系数
+  // 切换军车类型时带出该类型的默认越野速度
   const MILITARY_PRESETS = {
-    wheeled: { speed: 30, penalty: 1.5 },
-    tracked: { speed: 20, penalty: 1.2 },
-    logistics: { speed: 15, penalty: 2.0 }
+    wheeled: { speed: 30 },
+    tracked: { speed: 20 },
+    logistics: { speed: 15 }
   };
   hybridMilitaryTypeEl.addEventListener('change', () => {
     const preset = MILITARY_PRESETS[hybridMilitaryTypeEl.value];
     if (preset) {
       hybridSpeedEl.value = preset.speed;
-      hybridPenaltyEl.value = preset.penalty;
     }
     if (activeTab === 'hybrid' && hybridPoints.length === 2) computeHybrid();
   });
@@ -2428,6 +2518,88 @@ if (viewer) {
     }
   });
 }
+
+// ---------- 路网管理（运行时动态加载自定义路网） ----------
+const roadsFileEl = document.getElementById('roads-file');
+const roadsModeEl = document.getElementById('roads-mode');
+const roadsSnapEl = document.getElementById('roads-snap');
+const roadsToleranceEl = document.getElementById('roads-tolerance');
+const roadsTagsEl = document.getElementById('roads-tags');
+const roadsPersistEl = document.getElementById('roads-persist');
+const roadsResultEl = document.getElementById('roads-result');
+const roadsRecordsEl = document.getElementById('roads-records');
+
+function selectedRoadsProfiles() {
+  return Array.from(document.querySelectorAll('#roads-profiles input:checked')).map(el => el.value);
+}
+
+function formatRoadsTime(ms) {
+  return ms >= 1000 ? `${(ms / 1000).toFixed(1)} 秒` : `${ms || 0} 毫秒`;
+}
+
+async function applyRoads() {
+  const file = roadsFileEl.files && roadsFileEl.files[0];
+  if (!file) {
+    roadsResultEl.innerHTML = '<span style="color:#b3261e">请先选择一个 GeoJSON 文件</span>';
+    return;
+  }
+  const profiles = selectedRoadsProfiles();
+  if (!profiles.length) {
+    roadsResultEl.innerHTML = '<span style="color:#b3261e">请至少选择一个目标 profile</span>';
+    return;
+  }
+  roadsResultEl.innerHTML = `<span style="color:#777">正在加载 ${file.name} 并重建路网索引，请稍候…</span>`;
+  try {
+    const text = await file.text();
+    const params = new URLSearchParams();
+    profiles.forEach(p => params.append('profiles', p));
+    params.set('mode', roadsModeEl.value);
+    params.set('snap_radius', roadsSnapEl.value);
+    params.set('match_tolerance', roadsToleranceEl.value);
+    params.set('persist', roadsPersistEl.checked ? 'true' : 'false');
+    if (roadsModeEl.value === 'overlay') {
+      (roadsTagsEl.value || '').split(',').map(s => s.trim()).filter(Boolean)
+        .forEach(t => params.append('overlay_tags', t));
+    }
+    const resp = await fetch(`${API_BASE}/custom-roads?${params.toString()}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: text
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+    const rows = (data.details || []).map(d =>
+      `<div>${d.profile}：新增节点 ${d.nodes_added}，新增边 ${d.edges_added}，匹配边 ${d.matched_edges}，跳过 ${d.skipped}</div>`);
+    roadsResultEl.innerHTML = `<div style="color:#1a7f37">路网更新完成（${data.mode}）：共新增节点 ${data.nodes_added}、边 ${data.edges_added}</div>`
+      + rows.join('')
+      + `<div style="color:#555;margin-top:4px">位置索引 ${formatRoadsTime(data.index_rebuild_ms)}，CH 重建 ${formatRoadsTime(data.ch_rebuild_ms)}，总耗时 ${formatRoadsTime(data.total_ms)}</div>`
+      + (data.stored_record ? `<div style="color:#777">已保存记录：${data.stored_record.file_name}</div>` : '');
+    refreshRoadsList();
+  } catch (e) {
+    roadsResultEl.innerHTML = `<span style="color:#b3261e">${String(e.message || e)}</span>`;
+  }
+}
+
+async function refreshRoadsList() {
+  try {
+    const resp = await fetch(`${API_BASE}/custom-roads`);
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+    const records = data.records || [];
+    if (!records.length) {
+      roadsRecordsEl.innerHTML = '<span style="color:#777">暂无已保存的动态路网记录</span>';
+      return;
+    }
+    roadsRecordsEl.innerHTML = '<div style="color:#555">已保存记录：</div>' + records.map(r =>
+      `<div>${r.file_name} · ${r.mode} · ${(r.profiles || []).join(', ')} · ${new Date(r.saved_at).toLocaleString()}</div>`
+    ).join('');
+  } catch (e) {
+    roadsRecordsEl.innerHTML = `<span style="color:#b3261e">读取记录失败：${String(e.message || e)}</span>`;
+  }
+}
+
+document.getElementById('roads-apply').addEventListener('click', applyRoads);
+document.getElementById('roads-list').addEventListener('click', refreshRoadsList);
 
 window.addEventListener('error', (e) => showError('页面脚本错误：' + (e.message || e.error)));
 

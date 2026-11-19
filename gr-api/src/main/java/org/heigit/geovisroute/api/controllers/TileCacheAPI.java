@@ -45,7 +45,7 @@ import java.util.concurrent.TimeUnit;
  */
 @RestController
 @Tag(name = "Tile cache service", description = "OpenStreetMap 瓦片本地缓存")
-@RequestMapping("/tiles/osm")
+@RequestMapping("/v2/tiles/osm")
 public class TileCacheAPI {
 
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()

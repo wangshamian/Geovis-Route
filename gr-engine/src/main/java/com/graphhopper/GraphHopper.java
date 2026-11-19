@@ -874,6 +874,29 @@ public class GraphHopper {
     }
 
     protected void prepareImport() {
+        Map<String, ImportUnit> activeImportUnits = new LinkedHashMap<>();
+        Map<String, PMap> encodedValuesWithProps = collectImportUnits(activeImportUnits);
+        Map<String, List<String>> restrictionVehicleTypesByProfile = getRestrictionVehicleTypesByProfile(profilesByName.values());
+        encodingManager = buildEncodingManager(encodedValuesWithProps, activeImportUnits, restrictionVehicleTypesByProfile);
+        osmParsers = buildOSMParsers(encodedValuesWithProps, activeImportUnits, restrictionVehicleTypesByProfile, osmReaderConfig.getIgnoredHighways());
+    }
+
+    /**
+     * Creates the OSMParsers for a graph that was loaded from disk instead of imported. They are
+     * needed to create new edges at runtime, e.g. by the custom road network importer.
+     */
+    public synchronized void initOSMParsersIfNeeded() {
+        if (osmParsers != null)
+            return;
+        if (encodingManager == null)
+            throw new IllegalStateException("EncodingManager not yet built");
+        Map<String, ImportUnit> activeImportUnits = new LinkedHashMap<>();
+        Map<String, PMap> encodedValuesWithProps = collectImportUnits(activeImportUnits);
+        Map<String, List<String>> restrictionVehicleTypesByProfile = getRestrictionVehicleTypesByProfile(profilesByName.values());
+        osmParsers = buildOSMParsers(encodedValuesWithProps, activeImportUnits, restrictionVehicleTypesByProfile, osmReaderConfig.getIgnoredHighways());
+    }
+
+    private Map<String, PMap> collectImportUnits(Map<String, ImportUnit> activeImportUnits) {
         Map<String, PMap> encodedValuesWithProps = parseEncodedValueString(encodedValuesString);
         NameValidator nameValidator = s -> importRegistry.createImportUnit(s) != null;
         Set<String> missing = new LinkedHashSet<>();
@@ -901,8 +924,6 @@ public class GraphHopper {
         encodedValuesWithProps.putIfAbsent(RoadClassLink.KEY, new PMap());
         encodedValuesWithProps.putIfAbsent(MaxSpeed.KEY, new PMap());
 
-        Map<String, List<String>> restrictionVehicleTypesByProfile = getRestrictionVehicleTypesByProfile(profilesByName.values());
-
         if (urbanDensityCalculationThreads > 0)
             encodedValuesWithProps.put(UrbanDensity.KEY, new PMap());
         if (maxSpeedCalculator != null) {
@@ -911,7 +932,6 @@ public class GraphHopper {
             encodedValuesWithProps.put(MaxSpeedEstimated.KEY, new PMap());
         }
 
-        Map<String, ImportUnit> activeImportUnits = new LinkedHashMap<>();
         ArrayDeque<String> deque = new ArrayDeque<>(encodedValuesWithProps.keySet());
         while (!deque.isEmpty()) {
             String ev = deque.removeFirst();
@@ -921,8 +941,7 @@ public class GraphHopper {
             if (activeImportUnits.put(ev, importUnit) == null)
                 deque.addAll(importUnit.getRequiredImportUnits());
         }
-        encodingManager = buildEncodingManager(encodedValuesWithProps, activeImportUnits, restrictionVehicleTypesByProfile);
-        osmParsers = buildOSMParsers(encodedValuesWithProps, activeImportUnits, restrictionVehicleTypesByProfile, osmReaderConfig.getIgnoredHighways());
+        return encodedValuesWithProps;
     }
 
     protected void postImportOSM() {
@@ -1489,6 +1508,74 @@ public class GraphHopper {
         if (!baseGraph.isFrozen())
             baseGraph.freeze();
         return chPreparationHandler.prepare(baseGraph, properties, configsToPrepare, closeEarly);
+    }
+
+    /**
+     * 运行时路网变更后重建位置索引。
+     * <p>
+     * 调用方必须保证当前没有并发的路由请求（由 GraphUpdateLock 写锁保证）。
+     * 旧索引的 DataAccess 会被移除并删除磁盘文件，随后按最新图数据重新构建并落盘，
+     * 保证下次启动时位置索引的校验和与图一致。
+     */
+    public synchronized void rebuildLocationIndex() {
+        if (!fullyLoaded)
+            throw new IllegalStateException("Do a successful call to load or importOrLoad before rebuilding the location index");
+        removeDataAccessIfExists("location_index");
+        locationIndex = null;
+        ensureWriteAccess();
+        locationIndex = createLocationIndex(baseGraph.getDirectory());
+    }
+
+    /**
+     * 运行时路网变更后重建 CH 预处理结构。
+     * <p>
+     * 新增边或覆盖属性都会使已有 CH 快捷边失效，因此需要删除旧的 CH 存储并重新准备。
+     * 调用方必须保证当前没有并发的路由请求（由 GraphUpdateLock 写锁保证）。
+     */
+    public synchronized void rebuildCH() {
+        if (!fullyLoaded)
+            throw new IllegalStateException("Do a successful call to load or importOrLoad before rebuilding CH");
+        if (lmPreparationHandler.isEnabled())
+            throw new UnsupportedOperationException("LM preparation is enabled, runtime road network update is not supported. "
+                    + "Disable LM preparation before using this feature.");
+
+        List<CHConfig> chConfigs = createCHConfigs(chPreparationHandler.getCHProfiles());
+        if (chConfigs.isEmpty()) {
+            if (!baseGraph.isFrozen())
+                baseGraph.freeze();
+            chGraphs = Collections.emptyMap();
+            return;
+        }
+
+        // 旧 CH 图不能调用 close()（RoutingCHGraphImpl.close() 会连带关闭 BaseGraph），
+        // 只清理底层 DataAccess 并替换引用即可。
+        for (CHConfig chConfig : chConfigs) {
+            removeDataAccessIfExists("nodes_ch_" + chConfig.getName());
+            removeDataAccessIfExists("shortcuts_" + chConfig.getName());
+        }
+        chGraphs = Collections.emptyMap();
+
+        Map<String, PrepareContractionHierarchies.Result> prepared = prepareCH(false, chConfigs);
+        Map<String, RoutingCHGraph> rebuilt = new LinkedHashMap<>();
+        for (CHProfile profile : chPreparationHandler.getCHProfiles()) {
+            PrepareContractionHierarchies.Result result = prepared.get(profile.getProfile());
+            if (result == null)
+                throw new IllegalStateException("CH graph could not be prepared: " + profile.getProfile());
+            setCHProfileVersion(profile.getProfile(), getProfileHash(profilesByName.get(profile.getProfile())));
+            rebuilt.put(profile.getProfile(), RoutingCHGraphImpl.fromGraph(
+                    baseGraph.getBaseGraph(), result.getCHStorage(), result.getCHConfig()));
+        }
+        chGraphs = rebuilt;
+        properties.flush();
+    }
+
+    private void removeDataAccessIfExists(String name) {
+        GHDirectory ghDirectory = (GHDirectory) baseGraph.getDirectory();
+        try {
+            ghDirectory.remove(name);
+        } catch (IllegalStateException e) {
+            // 该 DataAccess 未被注册（例如尚未构建），无需处理
+        }
     }
 
     /**

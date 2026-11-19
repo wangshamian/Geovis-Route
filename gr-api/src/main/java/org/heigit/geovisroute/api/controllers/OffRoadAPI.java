@@ -16,6 +16,7 @@ import com.graphhopper.util.shapes.GHPoint;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.heigit.geovisroute.api.config.ApiEngineProperties;
+import org.heigit.geovisroute.api.config.OffRoadProperties;
 import org.heigit.geovisroute.common.EncoderNameEnum;
 import org.heigit.geovisroute.routing.RoutingProfile;
 import org.heigit.geovisroute.routing.RoutingProfileManager;
@@ -52,10 +53,8 @@ import java.util.Map;
 public class OffRoadAPI {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OffRoadAPI.class);
-    private static final double DEFAULT_GRID_INTERVAL = 50;
     private static final double MIN_GRID_INTERVAL = 10;
     private static final double MAX_GRID_INTERVAL = 1000;
-    private static final double DEFAULT_MAX_SLOPE = 20;
     private static final double MIN_MAX_SLOPE = 1;
     private static final double MAX_MAX_SLOPE = 60;
     /**
@@ -73,13 +72,20 @@ public class OffRoadAPI {
      * 公路与越野混合路由默认使用的路网 profile。
      */
     private static final String DEFAULT_HYBRID_PROFILE = "driving-military";
-    private static final double DEFAULT_OFFROAD_PENALTY = 1.5;
+    /**
+     * “越野隐蔽”策略下公路段代价系数：压低公路吸引力，使路径尽量避开道路。
+     */
+    private static final double HYBRID_ROAD_PENALTY = 3.0;
     /**
      * 高程剖面最多返回的采样点数量。
      */
     private static final int MAX_PROFILE_SAMPLES = 128;
 
     private final ApiEngineProperties apiEngineProperties;
+    /**
+     * 越野路径默认参数（网格间距、坡度阈值、超时、走廊宽度等）。
+     */
+    private final OffRoadProperties offRoadProperties;
     /**
      * 地表覆盖提供者（WorldCover），决定禁行区域与越野速度折减，未配置时为 null。
      */
@@ -97,9 +103,11 @@ public class OffRoadAPI {
     private final Object offroadLock = new Object();
 
     public OffRoadAPI(ApiEngineProperties apiEngineProperties,
+                      OffRoadProperties offRoadProperties,
                       @Value("${ors.offroad.worldcover_image:}") String worldCoverImage,
                       @Value("${ors.offroad.worldcover_meta:}") String worldCoverMeta) {
         this.apiEngineProperties = apiEngineProperties;
+        this.offRoadProperties = offRoadProperties;
         Path worldCoverImagePath = resolveRegularFile(worldCoverImage);
         Path worldCoverMetaPath = resolveRegularFile(worldCoverMeta);
         this.obstacleProvider = createWorldCoverProvider(worldCoverImagePath, worldCoverMetaPath);
@@ -228,27 +236,47 @@ public class OffRoadAPI {
             points.add(new GHPoint(lat, lon));
         }
 
-        double gridInterval = request.gridInterval() == null ? DEFAULT_GRID_INTERVAL : request.gridInterval();
+        // grid_interval 与 max_slope 由前端传入（默认值在前端页面维护），后端不再提供配置默认值
+        if (request.gridInterval() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "grid_interval 为必填参数"));
+        }
+        double gridInterval = request.gridInterval();
         if (gridInterval < MIN_GRID_INTERVAL || gridInterval > MAX_GRID_INTERVAL) {
             return ResponseEntity.badRequest().body(Map.of("error",
                     String.format("grid_interval 需在 %.0f~%.0f 米之间", MIN_GRID_INTERVAL, MAX_GRID_INTERVAL)));
         }
-        double maxSlope = request.maxSlope() == null ? DEFAULT_MAX_SLOPE : request.maxSlope();
+        if (request.maxSlope() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "max_slope 为必填参数"));
+        }
+        double maxSlope = request.maxSlope();
         if (maxSlope < MIN_MAX_SLOPE || maxSlope > MAX_MAX_SLOPE) {
             return ResponseEntity.badRequest().body(Map.of("error",
                     String.format("max_slope 需在 %.0f~%.0f 度之间", MIN_MAX_SLOPE, MAX_MAX_SLOPE)));
         }
-        String vehicle = request.vehicle() == null || request.vehicle().isBlank()
-                ? DEFAULT_VEHICLE : request.vehicle().trim();
+        boolean defaultVehicle = request.vehicle() == null || request.vehicle().isBlank();
+        String vehicle = defaultVehicle ? DEFAULT_VEHICLE : request.vehicle().trim();
         Double speedKmh = VEHICLE_SPEEDS_KMH.get(vehicle);
         if (speedKmh == null) {
             return ResponseEntity.badRequest().body(Map.of("error",
                     "不支持的 vehicle：" + vehicle + "，可选值：" + String.join(", ", VEHICLE_SPEEDS_KMH.keySet())));
         }
+        // 未指定车型时，默认车型的速度取配置值，显式指定车型时仍以车型速度为准
+        if (defaultVehicle) {
+            speedKmh = offRoadProperties.getOffroadSpeedKmh();
+        }
 
         GHRequest ghRequest = new GHRequest(points);
         ghRequest.putHint("grid_interval", gridInterval);
         ghRequest.putHint("max_slope", maxSlope);
+        // 其余越野参数不对外暴露，统一取配置默认值，由 OffRoader 按 hint 覆盖常量默认值
+        ghRequest.putHint("max_cells", offRoadProperties.getMaxCells());
+        ghRequest.putHint("max_hybrid_cells", offRoadProperties.getMaxHybridCells());
+        ghRequest.putHint("timeout_ms", offRoadProperties.getTimeoutMs());
+        ghRequest.putHint("corridor_min_meters", offRoadProperties.getCorridorMinMeters());
+        ghRequest.putHint("corridor_max_meters", offRoadProperties.getCorridorMaxMeters());
+        ghRequest.putHint("corridor_ratio", offRoadProperties.getCorridorRatio());
+        ghRequest.putHint("min_surface_factor", offRoadProperties.getMinSurfaceFactor());
+        ghRequest.putHint("min_road_speed_kmh", offRoadProperties.getMinRoadSpeedKmh());
 
         // 是否混合由接口决定：/offroad 恒为纯越野，/hybrid 恒为公路+越野
         boolean hybrid = forceHybrid;
@@ -269,9 +297,34 @@ public class OffRoadAPI {
         if (offroadSpeedKmh <= 0) {
             return ResponseEntity.badRequest().body(Map.of("error", "offroad_speed_kmh 需为正数"));
         }
-        double offroadPenalty = request.offroadPenalty() == null
-                ? (hybrid ? militaryVehicleType.getDefaultRoadPenalty() : DEFAULT_OFFROAD_PENALTY)
-                : request.offroadPenalty();
+        // 路线策略：时间最优不施加偏好；公路优先惩罚越野段；越野隐蔽惩罚公路段
+        String strategy = request.strategy() == null || request.strategy().isBlank()
+                ? "road" : request.strategy().trim().toLowerCase();
+        String strategyLabel;
+        double offroadPenalty;
+        double roadPenalty;
+        switch (strategy) {
+            case "time" -> {
+                strategyLabel = "时间最优";
+                offroadPenalty = 1;
+                roadPenalty = 1;
+            }
+            case "road" -> {
+                strategyLabel = "公路优先";
+                offroadPenalty = request.offroadPenalty() == null
+                        ? (hybrid ? militaryVehicleType.getDefaultRoadPenalty() : offRoadProperties.getOffroadPenalty())
+                        : request.offroadPenalty();
+                roadPenalty = 1;
+            }
+            case "conceal" -> {
+                strategyLabel = "越野隐蔽";
+                offroadPenalty = 1;
+                roadPenalty = HYBRID_ROAD_PENALTY;
+            }
+            default -> {
+                return ResponseEntity.badRequest().body(Map.of("error", "strategy 仅支持 time、road、conceal"));
+            }
+        }
         if (offroadPenalty < 1) {
             return ResponseEntity.badRequest().body(Map.of("error", "offroad_penalty 不能小于 1"));
         }
@@ -286,6 +339,7 @@ public class OffRoadAPI {
         ghRequest.putHint("hybrid", hybrid);
         ghRequest.putHint("offroad_speed_kmh", offroadSpeedKmh);
         ghRequest.putHint("offroad_penalty", offroadPenalty);
+        ghRequest.putHint("road_penalty", roadPenalty);
 
         ElevationProvider elevationProvider = resolveElevationProvider();
         OffRoadResponse offRoadResponse;
@@ -333,6 +387,8 @@ public class OffRoadAPI {
             result.put("military_type", militaryVehicleType.getValue());
             result.put("military_type_label", militaryVehicleType.getLabel());
             result.put("offroad_speed_kmh", offroadSpeedKmh);
+            result.put("strategy", strategy);
+            result.put("strategy_label", strategyLabel);
             result.put("offroad_penalty", offroadPenalty);
             // 分段明细：按公路/越野连续段给出里程、耗时与起止坐标
             List<Map<String, Object>> segments = new ArrayList<>();
@@ -655,6 +711,7 @@ public class OffRoadAPI {
                                  @JsonProperty("profile") String profile,
                                  @JsonProperty("offroad_speed_kmh") Double offroadSpeedKmh,
                                  @JsonProperty("offroad_penalty") Double offroadPenalty,
+                                 @JsonProperty("strategy") String strategy,
                                  @JsonProperty("military_type") String militaryType) {
     }
 }
